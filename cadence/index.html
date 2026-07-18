@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cadence — Parkinson's Home Monitoring</title>
+<style>
+  :root{
+    --surface-1:#fcfcfb; --page:#f9f9f7;
+    --ink-1:#0b0b0b; --ink-2:#52514e; --ink-3:#898781;
+    --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+    --s1:#2a78d6; --s1-wash:rgba(42,120,214,.10);
+    --violet:#4a3aa7;
+    --warn:#fab219; --serious:#ec835a; --crit:#d03b3b; --good:#0ca30c;
+    --off-wash:rgba(208,59,59,.07); --dysk-wash:rgba(250,178,25,.12);
+    --cell-on:#b7d3f6; --cell-off:#d03b3b; --cell-dysk:#eda100;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --surface-1:#1a1a19; --page:#0d0d0d;
+      --ink-1:#ffffff; --ink-2:#c3c2b7; --ink-3:#898781;
+      --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+      --s1:#3987e5; --s1-wash:rgba(57,135,229,.12);
+      --violet:#9085e9;
+      --off-wash:rgba(208,59,59,.10); --dysk-wash:rgba(250,178,25,.10);
+      --cell-on:#1c5cab; --cell-off:#d03b3b; --cell-dysk:#c98500;
+    }
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--page);color:var(--ink-1);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;padding:20px}
+  .wrap{max-width:1100px;margin:0 auto}
+
+  header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+  .brand h1{font-size:19px;font-weight:650;letter-spacing:-.01em}
+  .brand p{color:var(--ink-2);font-size:12.5px}
+  .patient{display:flex;align-items:center;gap:10px;color:var(--ink-2);font-size:12.5px}
+  .patient b{color:var(--ink-1);font-weight:600}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--s1);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px}
+
+  .tabs{display:inline-flex;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--surface-1)}
+  .tabs button{border:0;background:transparent;color:var(--ink-2);padding:8px 16px;font:600 13px system-ui,sans-serif;cursor:pointer}
+  .tabs button.on{background:var(--s1);color:#fff}
+
+  .banner{display:flex;gap:12px;align-items:flex-start;background:var(--surface-1);border:1px solid var(--border);border-left:4px solid var(--warn);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+  .banner .ic{font-size:18px;line-height:1.2}
+  .banner h2{font-size:14.5px;font-weight:650}
+  .banner p{color:var(--ink-2);font-size:12.5px;margin-top:3px}
+  .banner .tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);margin-bottom:2px}
+
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+  .tile{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+  .tile .lbl{font-size:11.5px;color:var(--ink-2)}
+  .tile .val{font-size:24px;font-weight:650;margin:2px 0}
+  .tile .val small{font-size:13px;font-weight:500;color:var(--ink-2)}
+  .tile .delta{font-size:11.5px;font-weight:600}
+  .delta.bad{color:var(--crit)} .delta.good{color:var(--good)} .delta.flat{color:var(--ink-3)}
+  .tile svg{display:block;margin-top:6px}
+
+  .trendhead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:4px 0 2px}
+  .trendhead .now{font-size:27px;font-weight:650;font-variant-numeric:tabular-nums}
+  .trendhead .chg{font-size:12.5px;font-weight:600}
+  .trendhead .base{font-size:12px;color:var(--ink-3)}
+  .ranges{display:flex;gap:2px;flex-wrap:wrap;margin:6px 0 10px;border-bottom:1px solid var(--grid);padding-bottom:7px}
+  .ranges button{border:0;background:transparent;color:var(--ink-2);font:600 12.5px system-ui,-apple-system,sans-serif;padding:5px 12px;border-radius:7px;cursor:pointer}
+  .ranges button:hover{color:var(--ink-1)}
+  .ranges button.on{background:var(--s1-wash);color:var(--s1)}
+  .ranges.metrics{border-bottom:0;padding-bottom:0;margin-bottom:2px}
+  .tile{cursor:pointer;transition:border-color .12s}
+  .tile:hover{border-color:var(--s1)}
+  .minis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+  @media(max-width:640px){.minis{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;transition:border-color .12s}
+  .mini:hover{border-color:var(--s1)}
+  .mini .mh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:11.5px;color:var(--ink-2);font-weight:600}
+  .mini .mv{font-size:15px;font-weight:650;color:var(--ink-1)}
+  .mini .delta{margin-top:2px}
+
+  .grid2{display:grid;grid-template-columns:2fr 1fr;gap:14px;align-items:start}
+  @media(max-width:860px){.grid2{grid-template-columns:1fr}}
+
+  .card{background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
+  .card h3{font-size:14px;font-weight:650}
+  .card .sub{color:var(--ink-2);font-size:12px;margin:2px 0 10px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin-bottom:6px}
+  .legend .key{display:inline-flex;align-items:center;gap:6px}
+  .key i{width:14px;height:0;border-top:2px solid var(--s1);display:inline-block}
+  .key i.cmp{border-top:2px dashed var(--ink-3)}
+  .key i.dose{width:0;height:0;border:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:8px solid var(--violet)}
+  .key i.offz{width:12px;height:12px;border:0;background:var(--off-wash);outline:1px solid var(--border)}
+  .key i.dyskz{width:12px;height:12px;border:0;background:var(--dysk-wash);outline:1px solid var(--border)}
+  .key i.sw{width:12px;height:12px;border:0}
+  table.dose tr.hot td{font-weight:650;color:var(--ink-1)}
+
+  .fall{border-left:4px solid var(--crit)}
+  .fall .head{display:flex;gap:8px;align-items:center;font-weight:650;font-size:13.5px}
+  .fall .head .dot{color:var(--crit)}
+  .fall ul{list-style:none;margin-top:8px;display:grid;gap:5px;font-size:12.5px;color:var(--ink-2)}
+  .fall ul b{color:var(--ink-1);font-weight:600}
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--off-wash);color:var(--crit);letter-spacing:.04em}
+  .pill.ok{background:rgba(12,163,12,.10);color:var(--good)}
+
+  details{margin-top:8px}
+  summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--s1)}
+  .transcript{margin-top:8px;font-size:12px;color:var(--ink-2);border-left:2px solid var(--grid);padding-left:10px;display:grid;gap:6px}
+  .transcript b{color:var(--ink-1)}
+
+  .pipe{display:grid;gap:0;font-size:12.5px}
+  .pipe .st{display:flex;gap:10px;align-items:flex-start;padding:7px 0}
+  .pipe .n{width:22px;height:22px;border-radius:50%;background:var(--s1-wash);color:var(--s1);font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;flex:none;margin-top:1px}
+  .pipe b{font-weight:600}
+  .pipe span{color:var(--ink-2)}
+
+  table{border-collapse:collapse;font-size:12px;margin-top:8px;width:100%}
+  th,td{text-align:right;padding:4px 8px;border-bottom:1px solid var(--grid);font-variant-numeric:tabular-nums;color:var(--ink-2)}
+  th{color:var(--ink-3);font-weight:600}
+  th:first-child,td:first-child{text-align:left}
+
+  .tooltip{position:fixed;pointer-events:none;background:var(--ink-1);color:var(--page);font-size:11.5px;padding:6px 9px;border-radius:7px;opacity:0;transition:opacity .08s;z-index:9;white-space:nowrap}
+  .tooltip b{font-weight:650}
+
+  /* patient view */
+  .pv{max-width:520px;margin:0 auto}
+  .pv .state{background:var(--surface-1);border:1px solid var(--border);border-radius:16px;padding:28px 24px;text-align:center;margin-bottom:14px}
+  .pv .glow{width:14px;height:14px;border-radius:50%;background:var(--good);margin:0 auto 12px;box-shadow:0 0 0 6px rgba(12,163,12,.12)}
+  .pv h2{font-size:21px;font-weight:650;letter-spacing:-.01em}
+  .pv .state p{color:var(--ink-2);margin-top:6px;font-size:14px}
+  .pv .action{background:var(--surface-1);border:1px solid var(--border);border-radius:16px;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+  .pv .action h3{font-size:15px;font-weight:650}
+  .pv .action p{color:var(--ink-2);font-size:12.5px;margin-top:2px}
+  .pv .action button{border:0;background:var(--s1);color:#fff;font:600 13.5px system-ui,sans-serif;padding:11px 18px;border-radius:10px;cursor:pointer;flex:none}
+  .pv .warm{text-align:center;color:var(--ink-2);font-size:13.5px;padding:6px 12px}
+  .pv .fam{background:var(--surface-1);border:1px solid var(--border);border-radius:16px;padding:18px 22px;margin-top:14px}
+  .pv .fam h3{font-size:13px;font-weight:650;color:var(--ink-2);text-transform:uppercase;letter-spacing:.05em;font-size:11px}
+  .pv .fam p{margin-top:8px;font-size:13.5px}
+  .pv .adnum{font-size:26px;font-weight:650;margin-top:8px}
+  .pv .adnum small{font-size:13px;font-weight:500;color:var(--ink-2)}
+  .pv .adgrid{display:grid;grid-template-columns:58px repeat(7,1fr);gap:4px;margin-top:12px;align-items:center}
+  .pv .adgrid .rl{font-size:10.5px;color:var(--ink-3);font-weight:600}
+  .pv .adgrid .ch{font-size:10.5px;color:var(--ink-3);text-align:center;font-weight:600}
+  .pv .dcell{height:20px;border-radius:5px;background:var(--cell-on);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;line-height:1}
+  .pv .dcell.miss{background:var(--off-wash);border:1.5px solid var(--crit);color:var(--crit)}
+  .pv .dcell.due{background:transparent;border:1.5px dashed var(--axis)}
+  .pv .adlegend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-2);margin-top:10px}
+  .pv .adlegend .key{display:inline-flex;align-items:center;gap:6px}
+  .pv .adlegend i{width:13px;height:13px;border-radius:4px;background:var(--cell-on)}
+  .pv .adlegend i.miss{background:var(--off-wash);border:1.5px solid var(--crit)}
+  .pv .adlegend i.due{background:transparent;border:1.5px dashed var(--axis)}
+  .pv .inc{margin-top:10px;border-left:3px solid var(--crit);padding-left:12px}
+  .pv .inc .when{font-size:12px;color:var(--ink-2);font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .pv .inc p{margin-top:6px;font-size:13.5px}
+  .pv .quiet{margin-top:10px;font-size:12.5px;color:var(--ink-2)}
+
+  footer{color:var(--ink-3);font-size:11.5px;text-align:center;padding:14px 0 4px}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<div class="wrap viz-root">
+  <header>
+    <div class="brand">
+      <h1>Cadence</h1>
+      <p>Closing the snapshot gap in Parkinson's care · <a href="capture.html" style="color:var(--s1);text-decoration:none;font-weight:600">live capture</a> · <a href="slides.html" style="color:var(--s1);text-decoration:none;font-weight:600">pitch</a></p>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="on" id="tabC" onclick="setView('c')">Clinician</button>
+      <button id="tabP" onclick="setView('p')">Patient &amp; Family</button>
+    </div>
+    <div class="patient"><div class="avatar">MO</div><div><b>Margaret O.</b> · 71 · dx 2019<br>Levodopa 100mg · 4×/day</div></div>
+  </header>
+
+  <!-- ============ CLINICIAN VIEW ============ -->
+  <div id="viewC">
+    <div class="banner">
+      <div class="ic">⚠️</div>
+      <div>
+        <span class="tag">Pattern flag · last 30 days</span>
+        <h2>Therapeutic window narrowing — OFF time up 1.1 → 3.0 h/day, and morning peaks now brush the dyskinesia band.</h2>
+        <p><b>Levers for review:</b> ① shorten interval (4 h → 3.5 h, smaller doses) ② adjunct to extend each dose (COMT / MAO-B inhibitor). Raising the per-dose amount is <b>not</b> suggested — post-07:30 peaks already cross into dyskinesia. Observation only — the decision remains with you. Next scheduled visit: 14 Nov 2026 — <b>Cadence suggests pulling this forward ~8 weeks</b> based on the rate of change.</p>
+      </div>
+    </div>
+
+    <div class="tiles" id="tiles"></div>
+
+    <div class="grid2">
+      <div>
+        <div class="card" id="bigCard">
+          <h3 id="bigTitle"></h3>
+          <p class="sub" id="bigSub"></p>
+          <div class="ranges metrics" id="viewSel" role="tablist" aria-label="View"></div>
+
+          <div id="mDay">
+            <div class="legend">
+              <span class="key"><i></i>This week (avg)</span>
+              <span class="key"><i class="cmp"></i>4 weeks ago</span>
+              <span class="key"><i class="dose"></i>Dose taken (voice check-in)</span>
+              <span class="key"><i class="offz"></i>OFF zone</span>
+              <span class="key"><i class="dyskz"></i>Dyskinesia zone</span>
+            </div>
+            <div id="dayChart"></div>
+            <details><summary>View data as table</summary><div id="dayTable"></div></details>
+            <div class="minis">
+              <div class="mini" onclick="pickView('off')" title="Open full history">
+                <div class="mh"><span>OFF time / day · 1Y</span><span class="mv" id="miniOffV"></span></div>
+                <div id="miniOff"></div>
+                <div class="delta" id="miniOffD"></div>
+              </div>
+              <div class="mini" onclick="pickView('dysk')" title="Open full history">
+                <div class="mh"><span>Dyskinesia / day · 1Y</span><span class="mv" id="miniDyskV"></span></div>
+                <div id="miniDysk"></div>
+                <div class="delta" id="miniDyskD"></div>
+              </div>
+              <div class="mini" onclick="pickView('on')" title="Open full history">
+                <div class="mh"><span>Best-ON score · 1Y</span><span class="mv" id="miniOnV"></span></div>
+                <div id="miniOn"></div>
+                <div class="delta" id="miniOnD"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="mDiary" class="hide">
+            <div class="legend">
+              <span class="key"><i class="sw" style="background:var(--cell-on)"></i>ON</span>
+              <span class="key"><i class="sw" style="background:var(--cell-off)"></i>OFF</span>
+              <span class="key"><i class="sw" style="background:var(--cell-dysk)"></i>ON + dyskinesia</span>
+            </div>
+            <div id="diary"></div>
+          </div>
+
+          <div id="mTrend" class="hide">
+            <div class="trendhead">
+              <div class="now" id="tNow"></div>
+              <div class="chg" id="tChg"></div>
+              <div class="base" id="tBase"></div>
+            </div>
+            <div class="ranges" id="ranges" role="tablist" aria-label="Time range"></div>
+            <div class="legend">
+              <span class="key"><i></i>Cadence daily monitoring</span>
+              <span class="key"><span style="width:9px;height:9px;border-radius:50%;background:var(--ink-3);display:inline-block"></span>Clinic snapshot</span>
+              <span class="key"><i style="border-top-style:dashed;border-top-color:var(--ink-3)"></i>Baseline — first visit</span>
+              <span class="key"><i style="border-top-style:dashed;border-top-color:var(--crit)"></i>Trend, selected range</span>
+            </div>
+            <div id="trendChart"></div>
+            <details><summary>View data as table</summary><div id="trendTable"></div></details>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card fall">
+          <div class="head"><span class="dot">●</span> Acute event — fall detected <span class="pill ok" style="margin-left:auto">RESOLVED</span></div>
+          <ul>
+            <li><b>12 Jul, 20:14</b> · living room camera (pose pipeline)</li>
+            <li>Voice triage completed in 90 s — <b>responsive, no injury reported</b></li>
+            <li>Family notified 20:16 · no ambulance required</li>
+            <li>Occurred during evening OFF window — consistent with flag above</li>
+          </ul>
+          <details>
+            <summary>View triage transcript</summary>
+            <div class="transcript">
+              <div><b>Cadence:</b> "Margaret, I saw you may have fallen. Are you able to speak to me?"</div>
+              <div><b>Margaret:</b> "Yes… I'm okay, I caught the chair."</div>
+              <div><b>Cadence:</b> "Any pain in your head, hip or wrist?"</div>
+              <div><b>Margaret:</b> "No, just a fright."</div>
+              <div><b>Cadence:</b> "Okay. I've let Daniel know you're alright. Take a moment before standing."</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="card">
+          <h3>How this was computed</h3>
+          <p class="sub">Every flag is auditable back to source</p>
+          <div class="pipe">
+            <div class="st"><div class="n">1</div><div><b>142 h passive capture</b><br><span>edge device · video never leaves the home</span></div></div>
+            <div class="st"><div class="n">2</div><div><b>Pose + voice extraction</b><br><span>MediaPipe, 33 landmarks @ 30 fps · vocal amplitude &amp; pitch variance</span></div></div>
+            <div class="st"><div class="n">3</div><div><b>12 motor features / day</b><br><span>tremor amplitude, gait velocity, stride symmetry, sit-to-stand time…</span></div></div>
+            <div class="st"><div class="n">4</div><div><b>LLM interpretation layer</b><br><span>features → longitudinal pattern → plain-language flag</span></div></div>
+            <div class="st"><div class="n">5</div><div><b>1 flag · 0 raw footage shared</b><br><span>click any data point to view its source features</span></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Dose-by-dose response</h3>
+          <p class="sub">30-day averages, voice check-in → motor response</p>
+          <table class="dose">
+            <tr><th>Dose</th><th>ON in</th><th>Lasts</th><th>Fails</th></tr>
+            <tr><td>07:30</td><td>24 m</td><td>3.4 h</td><td>0/30</td></tr>
+            <tr><td>11:30</td><td>31 m</td><td>3.0 h</td><td>1/30</td></tr>
+            <tr class="hot"><td>15:30</td><td>43 m</td><td>2.6 h</td><td>4/30</td></tr>
+            <tr class="hot"><td>19:30</td><td>47 m</td><td>2.3 h</td><td>5/30</td></tr>
+          </table>
+          <p class="sub" style="margin-top:8px">Afternoon failures cluster on days with a late, high-protein lunch (levodopa–protein competition). Evening dose taken on average 22 min late.</p>
+        </div>
+
+        <div class="card">
+          <h3>Adherence</h3>
+          <p class="sub">Voice check-ins, 5 doses/day</p>
+          <div style="font-size:30px;font-weight:650">96%<span style="font-size:13px;color:var(--ink-2);font-weight:500"> · 30 days</span></div>
+          <p class="sub" style="margin-top:6px">3 missed doses, all evening — matches the OFF-window pattern.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PATIENT VIEW ============ -->
+  <div id="viewP" class="hide">
+    <div class="pv">
+      <div class="state">
+        <div class="glow"></div>
+        <h2>You're in a good window, Margaret.</h2>
+        <p>Your medicine is working well right now.</p>
+      </div>
+      <div class="action">
+        <div>
+          <h3>Next dose at 3:30 pm</h3>
+          <p>In about 40 minutes — I'll remind you.</p>
+        </div>
+        <button onclick="this.textContent='✓ Noted'">I've taken it</button>
+      </div>
+      <p class="warm">Mornings have been smoother this week than last — your walking after breakfast looked steady and relaxed. 🌱</p>
+      <div class="fam">
+        <h3>This week, for your family</h3>
+        <p>Margaret had a steady week. Mornings are her best time — a lovely window for calls or visits. Evenings have been a little slower; her care team can already see this and is keeping an eye on it. Nothing is needed from you right now.</p>
+      </div>
+
+      <div class="fam">
+        <h3>Medicines this week</h3>
+        <div class="adnum">25 <small>of 26 doses taken so far · 96% this month</small></div>
+        <div class="adgrid" id="famGrid" role="img" aria-label="Dose grid, last 7 days: 25 taken, 1 missed on Tuesday evening, 2 still to come today"></div>
+        <div class="adlegend">
+          <span class="key"><i></i>Taken</span>
+          <span class="key"><i class="miss"></i>✕ Missed</span>
+          <span class="key"><i class="due"></i>Still to come</span>
+        </div>
+        <p>Only Tuesday evening was missed. Evening doses are the easiest to forget — Margaret's care team sees this pattern too and reminders are on.</p>
+      </div>
+
+      <div class="fam">
+        <h3>Incidents — last 30 days</h3>
+        <div class="inc">
+          <div class="when">Fall · Sat 12 Jul, 8:14 pm <span class="pill ok">RESOLVED — NO INJURY</span></div>
+          <p>Margaret stumbled in the living room but caught herself on a chair. Cadence spoke with her within 90 seconds — she was fine, just a fright. Daniel was notified at 8:16 pm; no ambulance was needed.</p>
+        </div>
+        <p class="quiet">No other incidents this month, and nothing since. Nothing needs your attention right now.</p>
+      </div>
+    </div>
+  </div>
+
+  <footer>Synthetic demonstration data · Cadence surfaces observations — clinicians make all decisions · Hackathon prototype, Jul 2026</footer>
+</div>
+
+<div class="tooltip" id="tt"></div>
+
+<script>
+/* ---------- deterministic pseudo-random ---------- */
+let _s = 42;
+const rnd = () => (_s = (_s * 1103515245 + 12345) % 2147483648) / 2147483648;
+
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+/* ---------- synthetic data ---------- */
+const DOSES = [7.5, 11.5, 15.5, 19.5];
+function motorScore(t, duration, boosts = [0,0,0,0]){   // levodopa response curve
+  let s = 32;
+  DOSES.forEach((d, i) => {
+    const ts = t - d;
+    if (ts < 0) return;
+    let f = 0;
+    if (ts < 0.7) f = ts / 0.7;                                   // onset
+    else if (ts < duration) f = 1;                                // plateau
+    else f = Math.max(0, 1 - (ts - duration) / 1.1);              // wear-off
+    s = Math.max(s, 32 + (54 + boosts[i]) * f);
+  });
+  return Math.min(s, 95);
+}
+const times = []; for (let t = 6; t <= 23.01; t += 0.25) times.push(t);
+_s = 42;
+const today  = times.map(t => motorScore(t, 2.7, [8,2,0,-2]) + (rnd() - .5) * 4);
+const past   = times.map(t => motorScore(t, 3.5) + (rnd() - .5) * 4);
+const OFF_T  = 55, DYSK_T = 88;
+
+/* ---------- stat tiles ---------- */
+_s = 99;
+const spark = (base, slope) => [...Array(12)].map((_, i) => base + slope * i + (rnd() - .5) * slope * 3);
+const TILES = [
+  { k:'off',    l:'OFF time / day', v:'3.0', u:'h', d:'+1.9 h vs 4 wks', cls:'bad',  s:spark(1.1,.17) },
+  { k:'dysk',   l:'Dyskinesia / day', v:'0.4', u:'h', d:'new — 0 h at baseline', cls:'bad', s:spark(.02,.03) },
+  { k:'tremor', l:'Tremor index',   v:'4.2', u:'',  d:'+0.8 vs 4 wks',   cls:'bad',  s:spark(3.4,.07) },
+  { k:'gait',   l:'Gait speed',     v:'0.86',u:'m/s',d:'−0.09 vs 4 wks', cls:'bad',  s:spark(.95,-.008) },
+  { k:'voice',  l:'Voice volume',   v:'58',  u:'dB', d:'−3 dB vs 4 wks', cls:'bad',  s:spark(61,-.28) },
+  { k:'adh',    l:'Adherence',      v:'96',  u:'%',  d:'steady',         cls:'flat', s:spark(96,0) },
+];
+document.getElementById('tiles').innerHTML = TILES.map(t => {
+  const mn = Math.min(...t.s), mx = Math.max(...t.s), rg = (mx - mn) || 1;
+  const pts = t.s.map((v,i)=>`${(i/11*120).toFixed(1)},${(24-(v-mn)/rg*20-2).toFixed(1)}`).join(' ');
+  return `<div class="tile" title="View progression since first visit" onclick="pickView('${t.k}');document.getElementById('bigCard').scrollIntoView({behavior:'smooth'})"><div class="lbl">${t.l}</div>
+    <div class="val">${t.v}<small> ${t.u}</small></div>
+    <div class="delta ${t.cls}">${t.d}</div>
+    <svg width="120" height="26" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${css('--s1')}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/></svg></div>`;
+}).join('');
+
+/* ---------- generic line chart ---------- */
+const tt = document.getElementById('tt');
+function lineChart(el, opts){
+  const W = opts.w || el.clientWidth || 620, H = opts.h || 240;
+  const P = {l:34, r:12, t:12, b:24};
+  const x = v => P.l + (v - opts.x0) / (opts.x1 - opts.x0) * (W - P.l - P.r);
+  const y = v => H - P.b - (v - opts.y0) / (opts.y1 - opts.y0) * (H - P.t - P.b);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">`;
+
+  if (opts.offBand){  // OFF zone wash below threshold
+    s += `<rect x="${P.l}" y="${y(OFF_T)}" width="${W-P.l-P.r}" height="${H-P.b-y(OFF_T)}" fill="${css('--off-wash')}"/>`;
+    s += `<text x="${W-P.r-5}" y="${H-P.b-6}" text-anchor="end" font-size="9.5" font-weight="600" letter-spacing=".05em" fill="${css('--ink-3')}">OFF</text>`;
+  }
+  if (opts.dyskBand){ // dyskinesia zone wash above threshold
+    s += `<rect x="${P.l}" y="${P.t}" width="${W-P.l-P.r}" height="${y(DYSK_T)-P.t}" fill="${css('--dysk-wash')}"/>`;
+    s += `<text x="${W-P.r-5}" y="${P.t+11}" text-anchor="end" font-size="9.5" font-weight="600" letter-spacing=".05em" fill="${css('--ink-3')}">DYSKINESIA</text>`;
+  }
+
+  for (const g of opts.yTicks){
+    s += `<line x1="${P.l}" x2="${W-P.r}" y1="${y(g)}" y2="${y(g)}" stroke="${css('--grid')}" stroke-width="1"/>`;
+    s += `<text x="${P.l-6}" y="${y(g)+3.5}" text-anchor="end" font-size="10" fill="${css('--ink-3')}">${g}</text>`;
+  }
+  for (const g of opts.xTicks){
+    s += `<text x="${x(g.v)}" y="${H-7}" text-anchor="middle" font-size="10" fill="${css('--ink-3')}">${g.t}</text>`;
+  }
+  s += `<line x1="${P.l}" x2="${W-P.r}" y1="${H-P.b}" y2="${H-P.b}" stroke="${css('--axis')}" stroke-width="1"/>`;
+
+  if (opts.baseline){ // horizontal reference line (e.g. score at first visit)
+    const by = y(opts.baseline.y);
+    s += `<line x1="${P.l}" x2="${W-P.r}" y1="${by}" y2="${by}" stroke="${css('--ink-3')}" stroke-width="1" stroke-dasharray="2 3" opacity=".9"/>`;
+    s += `<text x="${W-P.r-4}" y="${by-5}" text-anchor="end" font-size="9.5" font-weight="600" fill="${css('--ink-3')}">${opts.baseline.label}</text>`;
+  }
+  if (opts.doses) for (const d of DOSES){
+    s += `<path d="M${x(d)-5} ${H-P.b+2} L${x(d)+5} ${H-P.b+2} L${x(d)} ${H-P.b-6} Z" fill="${css('--violet')}"/>`;
+  }
+
+  for (const ser of opts.series){
+    const pts = ser.xs.map((xv,i)=>`${x(xv).toFixed(1)},${y(ser.ys[i]).toFixed(1)}`).join(' ');
+    if (ser.wash){
+      s += `<polygon points="${x(ser.xs[0])},${H-P.b} ${pts} ${x(ser.xs[ser.xs.length-1])},${H-P.b}" fill="${css('--s1-wash')}"/>`;
+    }
+    s += `<polyline points="${pts}" fill="none" stroke="${ser.color}" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round" ${ser.dash?'stroke-dasharray="5 4"':''}/>`;
+  }
+  if (opts.dots) for (const d of opts.dots){ // marker dots (clinic visits, events)
+    const dx = x(d.x), dy = y(d.y);
+    s += `<circle cx="${dx.toFixed(1)}" cy="${dy.toFixed(1)}" r="${d.r||4}" fill="${d.color||css('--ink-3')}" stroke="${css('--surface-1')}" stroke-width="2"><title>${d.title||''}</title></circle>`;
+    if (d.label){
+      const left = dx > W - 110;
+      s += `<text x="${(left?dx-9:dx+9).toFixed(1)}" y="${(dy-8).toFixed(1)}" text-anchor="${left?'end':'start'}" font-size="10" font-weight="600" fill="${d.color||css('--ink-2')}">${d.label}</text>`;
+    }
+  }
+  if (opts.snapshot){ // the lone clinic-visit dot
+    const sx = x(opts.snapshot.x), sy = y(opts.snapshot.y);
+    s += `<circle cx="${sx}" cy="${sy}" r="5" fill="${css('--ink-3')}" stroke="${css('--surface-1')}" stroke-width="2"/>`;
+    s += `<text x="${sx+9}" y="${sy-8}" font-size="10.5" font-weight="600" fill="${css('--ink-2')}">clinic snapshot</text>`;
+  }
+  if (opts.trend){ // fitted slope line
+    const {m,b} = fit(opts.trend.xs, opts.trend.ys);
+    s += `<line x1="${x(opts.x0)}" y1="${y(m*opts.x0+b)}" x2="${x(opts.x1)}" y2="${y(m*opts.x1+b)}"
+      stroke="${opts.trend.color}" stroke-width="2" stroke-dasharray="2 4" opacity=".7"/>`;
+  }
+  s += `<line id="xh" x1="0" x2="0" y1="${P.t}" y2="${H-P.b}" stroke="${css('--axis')}" stroke-width="1" opacity="0"/>`;
+  s += `</svg>`;
+  el.innerHTML = s;
+
+  const svg = el.firstElementChild, xh = svg.querySelector('#xh');
+  svg.addEventListener('mousemove', ev => {
+    const r = svg.getBoundingClientRect();
+    const mx = (ev.clientX - r.left) / r.width * W;
+    const xv = opts.x0 + (mx - P.l) / (W - P.l - P.r) * (opts.x1 - opts.x0);
+    if (xv < opts.x0 || xv > opts.x1) { tt.style.opacity = 0; xh.setAttribute('opacity',0); return; }
+    let bi = 0, bd = 1e9;
+    opts.series[0].xs.forEach((v,i)=>{ const d = Math.abs(v-xv); if (d < bd){bd = d; bi = i;} });
+    xh.setAttribute('x1', x(opts.series[0].xs[bi])); xh.setAttribute('x2', x(opts.series[0].xs[bi]));
+    xh.setAttribute('opacity', .8);
+    tt.innerHTML = `<b>${opts.fmtX(opts.series[0].xs[bi])}</b><br>` +
+      opts.series.map(ser=>`${ser.name}: <b>${ser.ys[bi].toFixed(ser.dp??0)}${opts.unit||''}</b>`).join('<br>');
+    tt.style.left = (ev.clientX + 14) + 'px'; tt.style.top = (ev.clientY - 10) + 'px'; tt.style.opacity = 1;
+  });
+  svg.addEventListener('mouseleave', ()=>{ tt.style.opacity = 0; xh.setAttribute('opacity',0); });
+}
+function fit(xs, ys){
+  const n = xs.length, sx = xs.reduce((a,b)=>a+b), sy = ys.reduce((a,b)=>a+b);
+  const sxy = xs.reduce((a,v,i)=>a+v*ys[i],0), sxx = xs.reduce((a,v)=>a+v*v,0);
+  const m = (n*sxy - sx*sy)/(n*sxx - sx*sx); return {m, b:(sy - m*sx)/n};
+}
+const hhmm = t => `${Math.floor(t)}:${String(Math.round((t%1)*60)).padStart(2,'0')}`;
+
+/* ---------- render charts ---------- */
+lineChart(document.getElementById('dayChart'), {
+  w: 660, h: 260, x0: 6, x1: 23, y0: 20, y1: 100,
+  yTicks: [20,40,60,80,100], offBand: true, dyskBand: true, doses: true, unit: '',
+  xTicks: [6,9,12,15,18,21].map(v=>({v, t: hhmm(v)})),
+  fmtX: hhmm,
+  series: [
+    { name:'This week', xs: times, ys: today, color: css('--s1'), wash: true },
+    { name:'4 weeks ago', xs: times, ys: past, color: css('--ink-3'), dash: true },
+  ],
+  snapshot: { x: 10.25, y: motorScore(10.25, 2.7) },
+});
+
+/* ---------- longitudinal progression since first visit ---------- */
+const DAY_MS = 86400000;
+const BASE_DATE = new Date(2019, 2, 12);                     // first clinic visit — baseline
+const TODAY_D   = new Date(2026, 6, 18);
+const N_DAYS = Math.round((TODAY_D - BASE_DATE) / DAY_MS);
+const dateOf  = di => new Date(BASE_DATE.getTime() + di * DAY_MS);
+const fmtFull = di => dateOf(di).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
+
+/* each metric: slow drift s0 → v1 over the 7 years, then a recent shift recA over the last recD days */
+const METRICS = [
+  { k:'on',     label:'Best-ON motor score', unit:'',     dp:1, higherBad:false, cfg:{seed:2019, s0:92.8, v1:84.6, wig:.8,  noise:1.4, recD:120, recA:-1.6} },
+  { k:'off',    label:'OFF time / day',      unit:' h',   dp:1, higherBad:true,  cfg:{seed:11, s0:.3,   v1:1.1,  wig:.1,  noise:.5,  recD:45,  recA:1.9,  min:0} },
+  { k:'dysk',   label:'Dyskinesia / day',    unit:' h',   dp:1, higherBad:true,  cfg:{seed:12, s0:0,    v1:0,    wig:.01, noise:.06, recD:60,  recA:.4,   min:0} },
+  { k:'tremor', label:'Tremor index',        unit:'',     dp:1, higherBad:true,  cfg:{seed:13, s0:1.8,  v1:3.4,  wig:.15, noise:.5,  recD:45,  recA:.8,   min:0} },
+  { k:'gait',   label:'Gait speed',          unit:' m/s', dp:2, higherBad:false, cfg:{seed:14, s0:1.24, v1:.95,  wig:.02, noise:.05, recD:45,  recA:-.09, min:0} },
+  { k:'voice',  label:'Voice volume',        unit:' dB',  dp:0, higherBad:false, cfg:{seed:15, s0:66,   v1:61,   wig:.6,  noise:1.6, recD:45,  recA:-3} },
+  { k:'adh',    label:'Adherence',           unit:' %',   dp:0, higherBad:false, cfg:{seed:16, s0:97,   v1:96.5, wig:.5,  noise:2.2, recD:45,  recA:-.5,  max:100} },
+];
+function genSeries(c){
+  _s = c.seed;
+  return [...Array(N_DAYS + 1)].map((_, i) => {
+    const f = i / N_DAYS;
+    let v = c.s0 + (c.v1 - c.s0) * Math.pow(f, 1.15)             // slow progression since dx
+          + c.wig * (Math.sin(i / 58) + .6 * Math.sin(i / 23 + 1.3))  // good & bad spells
+          + (rnd() - .5) * c.noise;                              // day-to-day noise
+    const rec = N_DAYS - i;
+    if (rec < c.recD) v += c.recA * (1 - rec / c.recD);          // recent shift (the flag above)
+    if (c.min != null) v = Math.max(c.min, v);
+    if (c.max != null) v = Math.min(c.max, v);
+    return v;
+  });
+}
+const SERIES = {}; METRICS.forEach(m => SERIES[m.k] = genSeries(m.cfg));
+const VISITS = []; for (let d = 0; d <= N_DAYS; d += 182) VISITS.push(d);
+const FALL_D = N_DAYS - 6;                                   // 12 Jul 2026
+function niceStep(range){
+  const raw = (range || 1) / 4, p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const n = raw / p;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p;
+}
+
+const RANGES = [
+  {k:'1W', d:7}, {k:'1M', d:30}, {k:'3M', d:91}, {k:'6M', d:182},
+  {k:'1Y', d:365}, {k:'5Y', d:1826}, {k:'Max', d:N_DAYS},
+];
+document.getElementById('ranges').innerHTML =
+  RANGES.map(r => `<button data-k="${r.k}" onclick="renderTrend('${r.k}')">${r.k}</button>`).join('');
+
+/* ---------- merged big card: one view switcher for every graph ---------- */
+const VIEWS = [
+  {k:'overview', label:'Overview'},
+  {k:'diary',    label:'30-day diary'},
+  ...METRICS.map(m => ({k: m.k, label: m.label})),
+];
+document.getElementById('viewSel').innerHTML =
+  VIEWS.map(v => `<button data-v="${v.k}" onclick="pickView('${v.k}')">${v.label}</button>`).join('');
+
+let curMetric = 'on', curRange = 'Max', curView = 'day';
+function pickView(k){
+  curView = k;
+  const isMetric = METRICS.some(m => m.k === k);
+  document.querySelectorAll('#viewSel button').forEach(b => b.classList.toggle('on', b.dataset.v === k));
+  document.getElementById('mDay').classList.toggle('hide', k !== 'overview');
+  document.getElementById('mDiary').classList.toggle('hide', k !== 'diary');
+  document.getElementById('mTrend').classList.toggle('hide', !isMetric);
+  const title = document.getElementById('bigTitle'), sub = document.getElementById('bigSub');
+  if (k === 'overview'){
+    title.textContent = 'Motor state & key trends';
+    sub.textContent = 'Passively derived from pose + voice capture. The gray dot marks all a 6-month clinic visit would have seen. Below, the three trends that drive treatment decisions — click one for its full history since first visit.';
+  } else if (k === 'diary'){
+    title.textContent = '30-day ON/OFF diary';
+    sub.textContent = 'The validated Hauser diary — normally self-scored every 30 min for 3 days before a visit — derived passively, for every day of the interval. OFF wedges widen before each dose; dyskinesia emerges at morning peak from ~day 10.';
+  } else {
+    curMetric = k;
+    title.textContent = 'Progression since first visit';
+    renderTrend(curRange);
+  }
+}
+function pickMetric(k){ pickView(k); }
+
+function renderTrend(k){
+  curRange = k;
+  const m = METRICS.find(x => x.k === curMetric), S = SERIES[curMetric];
+  const span = Math.min(RANGES.find(r => r.k === k).d, N_DAYS);
+  const start = N_DAYS - span;
+  document.querySelectorAll('#ranges button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+  document.getElementById('bigSub').textContent =
+    `${m.label}, captured daily since baseline was set at Margaret's first clinic visit (12 Mar 2019). Gray dots are all a six-monthly clinic schedule would have seen — the line is what Cadence sees.`;
+
+  const BV = S.slice(0, 14).reduce((a,b)=>a+b) / 14;         // baseline — first two weeks after first visit
+
+  // slice, bucket-averaging long ranges down to ≤240 points
+  let xs = [], ys = [];
+  const maxPts = 240, count = span + 1;
+  if (count > maxPts){
+    const bw = count / maxPts;
+    for (let b = 0; b < maxPts; b++){
+      const s0 = start + Math.floor(b * bw), s1 = Math.min(start + Math.floor((b + 1) * bw), N_DAYS + 1);
+      let sum = 0, c = 0;
+      for (let i = s0; i < s1; i++){ sum += S[i]; c++; }
+      if (c){ xs.push((s0 + s1 - 1) / 2); ys.push(sum / c); }
+    }
+  } else {
+    for (let i = start; i <= N_DAYS; i++){ xs.push(i); ys.push(S[i]); }
+  }
+
+  const visits = VISITS.filter(v => v >= start);
+  const showBase = span >= 365;
+  const vals = ys.concat(visits.map(v => S[v]), showBase ? [BV] : []);
+  const mn = Math.min(...vals), mx = Math.max(...vals);
+  const step = niceStep(mx - mn);
+  let y0 = Math.floor((mn - (mx - mn) * .06) / step) * step;
+  if (m.cfg.min != null) y0 = Math.max(m.cfg.min, y0);
+  const yTicks = []; let yv = y0;
+  while (yv < mx + step * .55){ yTicks.push(+yv.toFixed(3)); yv += step; }
+  const y1 = yTicks[yTicks.length - 1];
+
+  const fmtTick = di => {
+    const d = dateOf(di);
+    if (span <= 190) return d.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
+    if (span <= 730) return d.toLocaleDateString('en-GB', {month:'short', year:'2-digit'});
+    return String(d.getFullYear());
+  };
+  const xTicks = [0,1,2,3,4].map(i => { const v = start + span * i / 4; return {v, t: fmtTick(v)}; });
+
+  const dots = visits.map(v => ({
+    x: v, y: S[v],
+    title: (v === 0 ? 'First visit (baseline) — ' : 'Clinic visit — ') + fmtFull(v),
+    label: (v === 0 && span === N_DAYS) ? 'first visit — baseline' : '',
+  }));
+  if (FALL_D >= start) dots.push({
+    x: FALL_D, y: S[FALL_D], r: 3.5, color: css('--crit'),
+    title: 'Fall detected — ' + fmtFull(FALL_D), label: span <= 400 ? 'fall' : '',
+  });
+
+  lineChart(document.getElementById('trendChart'), {
+    w: 660, h: 270, x0: start, x1: N_DAYS, y0, y1,
+    yTicks, xTicks, unit: m.unit, fmtX: fmtFull,
+    series: [{ name: m.label, xs, ys, color: css('--s1'), wash: true, dp: m.dp }],
+    trend: span >= 30 ? { xs, ys, color: css('--crit') } : null,
+    baseline: showBase ? { y: BV, label: `baseline ${BV.toFixed(m.dp)} — first visit` } : null,
+    dots,
+  });
+
+  // stock-style readout: latest value (7-day avg — stable across ranges), change over selected range, change vs baseline
+  const latest = S.slice(-7).reduce((a,b)=>a+b) / 7, first = ys[0];
+  const d1 = latest - first, db = latest - BV;
+  const slope = fit(xs, ys).m * 365.25;
+  const sign = (v, d = m.dp) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(d);
+  const pct = (d, base) => Math.abs(base) > .5 ? ` (${sign(d / base * 100, 1)}%)` : '';
+  const eps = Math.max(Math.abs(BV) * .01, m.dp === 2 ? .01 : .1);
+  const harmful = m.higherBad ? d1 > eps : d1 < -eps;
+  const better  = m.higherBad ? d1 < -eps : d1 > eps;
+  document.getElementById('tNow').textContent = latest.toFixed(m.dp) + m.unit;
+  const chg = document.getElementById('tChg');
+  chg.textContent = `${sign(d1)}${pct(d1, first)} ${k === 'Max' ? 'since first visit' : 'past ' + k}` +
+    (span >= 30 ? ` · trend ${sign(slope, m.dp === 0 ? 1 : m.dp)}/yr` : '');
+  chg.className = 'chg ' + (harmful ? 'delta bad' : better ? 'delta good' : 'delta flat');
+  document.getElementById('tBase').textContent =
+    `baseline ${BV.toFixed(m.dp)}${m.unit} at first visit, ${fmtFull(0)} · ${sign(db)}${pct(db, BV)} since`;
+
+  const rows = Math.max(1, Math.ceil(xs.length / 24));
+  document.getElementById('trendTable').innerHTML =
+    `<table><tr><th>Date</th><th>${m.label}</th></tr>` +
+    xs.filter((_, i) => i % rows === 0).map((di, i) =>
+      `<tr><td>${fmtFull(Math.round(di))}</td><td>${ys[i * rows].toFixed(m.dp)}</td></tr>`).join('') +
+    '</table>';
+}
+
+/* ---------- overview mini trends (the decision-driving three) ---------- */
+function renderMini(id, key){
+  const m = METRICS.find(x => x.k === key), S = SERIES[key];
+  const span = 365, start = N_DAYS - span;
+  const xs = [], ys = [], bw = (span + 1) / 100;
+  for (let b = 0; b < 100; b++){
+    const s0 = start + Math.floor(b * bw), s1 = Math.min(start + Math.floor((b + 1) * bw), N_DAYS + 1);
+    let sum = 0, c = 0;
+    for (let i = s0; i < s1; i++){ sum += S[i]; c++; }
+    if (c){ xs.push((s0 + s1 - 1) / 2); ys.push(sum / c); }
+  }
+  const mn = Math.min(...ys), mx = Math.max(...ys);
+  const step = niceStep(mx - mn);
+  let y0 = Math.floor(mn / step) * step;
+  if (m.cfg.min != null) y0 = Math.max(m.cfg.min, y0);
+  const yTicks = []; let yv = y0;
+  while (yv < mx + step * .55){ yTicks.push(+yv.toFixed(3)); yv += step; }
+  lineChart(document.getElementById(id), {
+    w: 300, h: 140, x0: start, x1: N_DAYS, y0, y1: yTicks[yTicks.length - 1],
+    yTicks, unit: m.unit, fmtX: fmtFull,
+    xTicks: [start + 30, start + 182, N_DAYS - 30].map(v =>
+      ({v, t: dateOf(v).toLocaleDateString('en-GB', {month:'short', year:'2-digit'})})),
+    series: [{ name: m.label, xs, ys, color: css('--s1'), wash: true, dp: m.dp }],
+    trend: { xs, ys, color: css('--crit') },
+  });
+  const latest = S.slice(-7).reduce((a,b)=>a+b) / 7, d = latest - ys[0];
+  const harmful = m.higherBad ? d > 0 : d < 0;
+  const sign = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(m.dp);
+  document.getElementById(id + 'V').textContent = latest.toFixed(m.dp) + m.unit;
+  const del = document.getElementById(id + 'D');
+  del.textContent = `${sign(d)}${m.unit} past 1Y`;
+  del.className = 'delta ' + (Math.abs(d) < .05 ? 'flat' : harmful ? 'bad' : 'good');
+}
+renderMini('miniOff', 'off');
+renderMini('miniDysk', 'dysk');
+renderMini('miniOn', 'on');
+pickView('overview');
+
+/* ---------- 30-day ON/OFF diary grid ---------- */
+(function(){
+  const el = document.getElementById('diary');
+  const bins = []; for (let t = 6; t < 23; t += 0.5) bins.push(t);
+  const CW = 660, rowH = 6.5, gap = 1.5, L = 30, T = 4;
+  const cw = (CW - L - 6) / bins.length;
+  const H = T + 30 * (rowH + gap) + 16;
+  let s = `<svg viewBox="0 0 ${CW} ${H}" width="100%" style="display:block">`;
+  for (let d = 1; d <= 30; d++){
+    const dur = 3.6 - 1.0 * (d / 30);          // wearing-off shortens the plateau
+    const boosts = [8 * (d / 30), 1, 0, -2];   // morning peak creeps into dyskinesia
+    const yy = T + (d - 1) * (rowH + gap);
+    if (d === 1 || d % 5 === 0)
+      s += `<text x="${L-5}" y="${yy+rowH-0.5}" text-anchor="end" font-size="8.5" fill="${css('--ink-3')}">d${d}</text>`;
+    bins.forEach((t, i) => {
+      const sc = motorScore(t + 0.25, dur, boosts);
+      const state = sc < OFF_T ? 'OFF' : sc >= DYSK_T ? 'ON + dyskinesia' : 'ON';
+      const c = sc < OFF_T ? css('--cell-off') : sc >= DYSK_T ? css('--cell-dysk') : css('--cell-on');
+      s += `<rect x="${(L+i*cw).toFixed(1)}" y="${yy}" width="${(cw-1).toFixed(1)}" height="${rowH}" rx="1" fill="${c}"><title>Day ${d}, ${hhmm(t)} — ${state}</title></rect>`;
+    });
+  }
+  for (const t of [6,9,12,15,18,21])
+    s += `<text x="${L+((t-6)/0.5)*cw}" y="${H-4}" font-size="9" fill="${css('--ink-3')}">${hhmm(t)}</text>`;
+  el.innerHTML = s + '</svg>';
+})();
+
+/* ---------- table view (hero chart) ---------- */
+document.getElementById('dayTable').innerHTML =
+  '<table><tr><th>Time</th><th>This week</th><th>4 weeks ago</th></tr>' +
+  times.filter((_,i)=>i%4===0).map((t,i)=>
+    `<tr><td>${hhmm(t)}</td><td>${today[i*4].toFixed(0)}</td><td>${past[i*4].toFixed(0)}</td></tr>`).join('') +
+  '</table>';
+
+/* ---------- family dose grid (last 7 days, 4 doses/day) ---------- */
+(function(){
+  const days  = ['Sat 12','Sun 13','Mon 14','Tue 15','Wed 16','Thu 17','Fri 18'];
+  const slots = [['Morning','7:30 am'],['Midday','11:30 am'],['Afternoon','3:30 pm'],['Evening','7:30 pm']];
+  const state = (d, s) => {
+    if (d === 6 && s >= 2) return 'due';    // today's afternoon + evening doses not due yet
+    if (d === 3 && s === 3) return 'miss';  // Tuesday evening
+    return 'ok';
+  };
+  let h = '<span></span>' + days.map(d => `<span class="ch">${d.slice(0,2)}</span>`).join('');
+  slots.forEach(([name, time], s) => {
+    h += `<span class="rl">${name}</span>`;
+    days.forEach((d, i) => {
+      const st = state(i, s);
+      const word = st === 'ok' ? 'taken' : st === 'miss' ? 'missed' : 'still to come';
+      h += `<div class="dcell ${st === 'ok' ? '' : st}" title="${d} Jul, ${time} — ${word}">${st === 'miss' ? '✕' : ''}</div>`;
+    });
+  });
+  document.getElementById('famGrid').innerHTML = h;
+})();
+
+/* ---------- view toggle ---------- */
+function setView(v){
+  document.getElementById('viewC').classList.toggle('hide', v !== 'c');
+  document.getElementById('viewP').classList.toggle('hide', v !== 'p');
+  document.getElementById('tabC').classList.toggle('on', v === 'c');
+  document.getElementById('tabP').classList.toggle('on', v === 'p');
+}
+</script>
+</body>
+</html>

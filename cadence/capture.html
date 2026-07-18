@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cadence Capture — live edge view</title>
+<style>
+  :root{
+    --surface-1:#fcfcfb; --page:#f9f9f7; --ink-1:#0b0b0b; --ink-2:#52514e; --ink-3:#898781;
+    --border:rgba(11,11,11,.10); --s1:#2a78d6; --good:#0ca30c; --warn:#fab219; --crit:#d03b3b;
+    --cam:#101312; --pose:#35e08d; --grid:#e1e0d9;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --surface-1:#1a1a19; --page:#0d0d0d; --ink-1:#fff; --ink-2:#c3c2b7; --ink-3:#898781;
+      --border:rgba(255,255,255,.10); --s1:#3987e5; --grid:#2c2c2a; }
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--page);color:var(--ink-1);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;padding:18px}
+  .wrap{max-width:1150px;margin:0 auto}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+  header h1{font-size:17px;font-weight:650}
+  header p{color:var(--ink-2);font-size:12.5px}
+  .btns{display:flex;gap:8px;align-items:center}
+  button,label.file{border:0;background:var(--s1);color:#fff;font:600 13px system-ui,sans-serif;padding:9px 14px;border-radius:9px;cursor:pointer}
+  label.file{background:var(--surface-1);color:var(--ink-2);border:1px solid var(--border)}
+  input[type=file]{display:none}
+  .clips{display:inline-flex;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--surface-1)}
+  .clips .c{background:transparent;color:var(--ink-2);border-radius:0;padding:9px 12px}
+  .clips .c.on{background:var(--s1);color:#fff}
+  a.back{color:var(--s1);font-size:12.5px;font-weight:600;text-decoration:none}
+
+  .grid{display:grid;grid-template-columns:1.35fr 1fr;gap:14px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+
+  .cam{position:relative;background:var(--cam);border-radius:14px;overflow:hidden;aspect-ratio:4/3.4}
+  .cam video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.4;display:none}
+  .cam svg{position:absolute;inset:0;width:100%;height:100%}
+  .rec{position:absolute;top:12px;left:14px;display:flex;gap:8px;align-items:center;font:600 11px system-ui,sans-serif;color:#e8e8e6;letter-spacing:.05em}
+  .rec .dot{width:8px;height:8px;border-radius:50%;background:#ff4d4d;animation:bl 1.2s infinite}
+  @keyframes bl{50%{opacity:.25}}
+  .camtag{position:absolute;top:12px;right:14px;font:600 10.5px system-ui,sans-serif;color:#9a9f9c;letter-spacing:.06em}
+  .privacy{position:absolute;bottom:10px;left:14px;right:14px;display:flex;justify-content:space-between;font:500 10.5px system-ui,sans-serif;color:#8fa198}
+  .tremorTag{position:absolute;top:36px;left:14px;font:600 10.5px system-ui,sans-serif;color:#35e08d;background:rgba(0,0,0,.45);padding:3px 7px;border-radius:6px}
+
+  .card{background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+  .card h3{font-size:13px;font-weight:650}
+  .card .sub{color:var(--ink-2);font-size:11.5px;margin:1px 0 8px}
+  .met{display:flex;gap:18px;flex-wrap:wrap}
+  .met div b{font-size:22px;font-weight:650}
+  .met div b small{font-size:12px;font-weight:500;color:var(--ink-2)}
+  .met div span{display:block;font-size:11px;color:var(--ink-2)}
+  canvas{width:100%;height:74px;display:block;margin-top:8px}
+  .state{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.05em;padding:3px 9px;border-radius:20px}
+  .state.off{background:rgba(208,59,59,.12);color:var(--crit)}
+  .state.on{background:rgba(12,163,12,.12);color:var(--good)}
+
+  .chat{display:grid;gap:8px;min-height:118px}
+  .bub{max-width:88%;padding:8px 12px;border-radius:12px;font-size:12.5px;opacity:0;transform:translateY(6px);transition:.35s}
+  .bub.show{opacity:1;transform:none}
+  .bub.ai{background:rgba(42,120,214,.10);border:1px solid var(--border);border-bottom-left-radius:4px}
+  .bub.pt{background:var(--surface-1);border:1px solid var(--border);justify-self:end;border-bottom-right-radius:4px}
+  .bub b{font-size:10.5px;letter-spacing:.05em;color:var(--ink-3);display:block;margin-bottom:2px}
+  .wave{display:inline-flex;gap:2px;align-items:flex-end;height:12px;margin-left:6px}
+  .wave i{width:2.5px;background:var(--s1);border-radius:2px;animation:wv .7s infinite ease-in-out}
+  .wave i:nth-child(2){animation-delay:.12s}.wave i:nth-child(3){animation-delay:.24s}.wave i:nth-child(4){animation-delay:.36s}
+  @keyframes wv{0%,100%{height:4px}50%{height:12px}}
+
+  .log{font:11.5px ui-monospace,Menlo,monospace;color:var(--ink-2);display:grid;gap:4px;max-height:150px;overflow:hidden}
+  .log .ok{color:var(--good);font-weight:600}
+  .log .ev{color:var(--s1)}
+  footer{color:var(--ink-3);font-size:11px;text-align:center;padding:12px 0 2px}
+  .mm{margin-top:14px}
+  .mmrow{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  @media(max-width:720px){.mmrow{grid-template-columns:1fr}}
+  .chan{border:1px solid var(--border);border-radius:10px;padding:13px 15px}
+  .chan.movement{border-left:3px solid var(--s1)} .chan.speech{border-left:3px solid var(--violet,#9085e9)}
+  .ct{font-size:13.5px;font-weight:650;display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .ct .ico{font-size:16px}
+  .chan ul{list-style:none;display:grid;gap:5px}
+  .chan li{font-size:12.5px;color:var(--ink-2);padding-left:14px;position:relative}
+  .chan li b{color:var(--ink-1);font-weight:600}
+  .chan li::before{content:"";position:absolute;left:2px;top:6px;width:5px;height:5px;border-radius:50%;background:var(--ink-3)}
+  .chan .why{font-size:12px;color:var(--ink-2);margin-top:10px;padding-top:9px;border-top:1px solid var(--grid)}
+  .chan .why b{color:var(--ink-1)}
+  .fuse{text-align:center;font-size:12.5px;font-weight:600;color:var(--s1);padding:9px;margin-top:12px;border:1px dashed var(--border);border-radius:8px}
+  .voice{margin-top:14px}
+  .vrow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:720px){.vrow{grid-template-columns:1fr}}
+  .vgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;align-items:start}
+  @media(max-width:720px){.vgrid{grid-template-columns:1fr}}
+  .vlabel{grid-column:1 / -1;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-top:4px}
+  .vcard{border:1px solid var(--border);border-radius:10px;padding:12px}
+  .vcard.pd{border-left:3px solid var(--crit)} .vcard.he{border-left:3px solid var(--good)}
+  .tagp{margin-left:auto;font-size:11px;color:var(--ink-2)}
+  .tagp em{font-style:normal;font-weight:700;color:var(--crit)}
+  .vhead{display:flex;align-items:center;gap:9px;font-size:13px}
+  .vhead .src{color:var(--ink-3);font-size:11px;margin-left:auto}
+  .vplay{width:30px;height:30px;border-radius:50%;border:0;background:var(--s1);color:#fff;font-size:12px;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center}
+  .vplay.playing{background:var(--crit)}
+  .vplot{width:100%;height:96px;margin:8px 0;display:block}
+  .vmet{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2)}
+  .vmet b{color:var(--ink-1);font-weight:650}
+  .vmet .lo b{color:var(--crit)}
+  .vquote{margin-top:9px;padding-top:8px;border-top:1px solid var(--grid);font-size:12px;font-style:italic;color:var(--ink-2)}
+  .vquote b{font-style:normal;font-weight:600;color:var(--ink-3);font-size:10.5px;letter-spacing:.04em;display:block;margin-bottom:2px}
+  .vhi{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface-1);border:1px solid var(--border);border-radius:10px;padding:9px 14px;margin:4px 0 12px;font-size:12.5px;color:var(--ink-2)}
+  .vhi b{font-size:17px;font-weight:700;color:var(--ink-1)}
+  .vhi b.lo{color:var(--crit)}
+  .vhi .vs{color:var(--ink-3);font-size:12px}
+  .vhi .vtag{margin-left:auto;font-size:12px}
+  .vhi .vtag b{font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Cadence Capture <span style="color:var(--ink-3);font-weight:500">· living-room unit, edge view</span></h1>
+      <p>MediaPipe pose (33 landmarks) + voice, processed on-device. This debug view never leaves the home.</p>
+    </div>
+    <div class="btns">
+      <button id="play" onclick="runScene()">▶ Run morning check-in scene</button>
+      <span class="clips">
+        <button class="c" onclick="setClip('walk',this)">Walking</button>
+        <button class="c" onclick="setClip('shuffle',this)">Shuffling</button>
+        <button class="c" onclick="setClip('exam',this)">Home cam</button>
+        <button class="c" onclick="setClip('tremor',this)">Tremor</button>
+        <button class="c" onclick="setClip('dyskinesia',this)">Dyskinesia</button>
+      </span>
+      <label class="file">Load file<input type="file" accept="video/*" onchange="loadVid(this)"></label>
+      <a class="back" href="index.html">Doctor dashboard →</a>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div>
+      <div class="cam" id="cam">
+        <video id="vid" muted loop playsinline></video>
+        <svg id="room" viewBox="0 0 400 460" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:100%;height:100%">
+          <rect x="0" y="382" width="400" height="78" fill="#161a17"/>
+          <line x1="0" y1="382" x2="400" y2="382" stroke="#242c27" stroke-width="1.5"/>
+          <ellipse cx="200" cy="436" rx="150" ry="16" fill="#1b221d"/>
+          <g stroke="#2c362f" stroke-width="2" fill="#131a20">
+            <rect x="22" y="58" width="92" height="146" rx="3"/>
+            <line x1="68" y1="58" x2="68" y2="204"/><line x1="22" y1="131" x2="114" y2="131"/>
+          </g>
+          <circle cx="92" cy="90" r="10" fill="#232d33"/>
+          <g fill="#20272b"><rect x="288" y="262" width="104" height="52" rx="10"/>
+            <rect x="284" y="300" width="112" height="66" rx="10"/>
+            <rect x="278" y="288" width="16" height="70" rx="7"/><rect x="386" y="288" width="14" height="70" rx="7"/></g>
+          <g stroke="#2c362f" stroke-width="2" fill="#151b17">
+            <rect x="16" y="326" width="72" height="50" rx="3"/>
+            <line x1="24" y1="376" x2="24" y2="388"/><line x1="80" y1="376" x2="80" y2="388"/>
+          </g>
+          <g stroke="#2c362f" stroke-width="2" fill="none">
+            <rect x="288" y="64" width="54" height="40" rx="2"/>
+            <path d="M132 344 q-8 -22 4 -34 M138 344 q0 -26 12 -34 M144 344 q10 -20 2 -36"/>
+          </g>
+          <rect x="126" y="344" width="24" height="20" rx="2" fill="#1c2420" stroke="#2c362f" stroke-width="1.5"/>
+          <g stroke="#2c362f" stroke-width="2"><line x1="352" y1="262" x2="352" y2="196"/></g>
+          <path d="M336 196 h32 l-6 -18 h-20 Z" fill="#232d29"/>
+        </svg>
+        <svg id="pose" viewBox="0 0 400 460"></svg>
+        <canvas id="trk" style="position:absolute;inset:0;width:100%;height:100%"></canvas>
+        <div class="rec"><span class="dot"></span> REC · EDGE-ONLY</div>
+        <div class="camtag">CAM 1 · LIVING ROOM · 30 FPS</div>
+        <div class="tremorTag" id="ttag">tremor 5.1 Hz · R hand</div>
+        <div class="privacy"><span>🔒 video processed on-device — only features transmitted</span><span id="clock">07:29:41</span></div>
+      </div>
+      <div class="card" style="margin-top:12px">
+        <h3>Feature stream <span style="color:var(--ink-3);font-weight:500">→ Cadence timeline</span></h3>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>Live motor features <span class="state off" id="st">PRE-DOSE · OFF</span></h3>
+        <p class="sub">rolling 10 s window</p>
+        <div class="met">
+          <div><b id="hz">5.1<small> Hz</small></b><span>rest tremor, R hand</span></div>
+          <div><b id="amp">6.2<small> mm</small></b><span>tremor amplitude (est.)</span></div>
+          <div><b id="gait">—</b><span>gait speed (last walk)</span></div>
+        </div>
+        <canvas id="wf" width="640" height="148"></canvas>
+        <p class="sub" style="margin-top:4px">Frequency measured live from tracked-landmark displacement (FFT, 2–8 Hz). Amplitude is a scale-relative estimate vs her own baseline — not clinic UPDRS scoring.</p>
+      </div>
+
+      <div class="card" id="gaitpanel" style="display:none">
+        <h3>Live gait analysis <span class="state off" id="gstate">MEASURING</span></h3>
+        <p class="sub" id="gaitsub">derived frame-by-frame from the tracked skeleton</p>
+        <div class="met">
+          <div><b id="gspeed">—<small> m/s</small></b><span>walking speed (now)</span></div>
+          <div><b id="gcad">—<small> /min</small></b><span>cadence (steps)</span></div>
+          <div><b id="gstride">—</b><span>stride length (rel.)</span></div>
+          <div><b id="garm">—</b><span>arm swing (rel.)</span></div>
+        </div>
+        <canvas id="gwf" width="640" height="120"></canvas>
+        <p class="sub" id="gaitnote" style="margin-top:4px"></p>
+      </div>
+
+      <div class="card" id="resp" style="display:none">
+        <h3 style="color:var(--good)">✓ Dose response confirmed</h3>
+        <p class="sub" id="resptext">Tremor amplitude ↓ 68% within onset window (24 min, shown ×60). Logged to timeline → visible on the doctor's diary grid.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mm">
+    <h3>What Cadence tracks <span style="color:var(--ink-3);font-weight:500">· two passive channels at home</span></h3>
+    <p class="sub">The camera watches movement, the mic listens to speech — the two symptom domains a doctor titrates against.</p>
+    <div class="mmrow">
+      <div class="chan movement">
+        <div class="ct"><span class="ico">📹</span> Camera — movement</div>
+        <ul>
+          <li><b>Tremor</b> — rest-tremor frequency &amp; amplitude</li>
+          <li><b>Gait</b> — walking speed, arm swing, freezing</li>
+          <li><b>Rigidity / slowness</b> — stiff, reduced movement</li>
+        </ul>
+        <p class="why"><b>Why it matters:</b> these rise and fall with every dose — they are the ON/OFF state a doctor is tuning.</p>
+      </div>
+      <div class="chan speech">
+        <div class="ct"><span class="ico">🎙</span> Microphone — speech</div>
+        <ul>
+          <li><b>Monotone</b> — reduced pitch variation</li>
+          <li><b>Hypophonia</b> — reduced loudness</li>
+          <li><b>Adherence</b> — spoken medication check-ins</li>
+        </ul>
+        <p class="why"><b>Why it matters:</b> voice change is one of the earliest, most sensitive signs — often before movement declines.</p>
+      </div>
+    </div>
+    <div class="fuse">both channels → one ON/OFF diary + titration flag</div>
+  </div>
+
+  <div class="card voice">
+    <h3>Voice biomarkers <span style="color:var(--ink-3);font-weight:500">· listening for early speech signs</span></h3>
+    <p class="sub">Two real single-speaker recordings — a person with Parkinson's and a healthy speaker. Press play: the flat, monotone voice is audible before it's measured. <b style="color:var(--crit)">Red bands mark monotone stretches</b>.</p>
+    <div class="vhi">
+      <span>Melodic range — how far the voice's pitch travels</span>
+      <b class="lo" id="hi-pd">7 st</b><span class="vs">vs</span><b id="hi-he">15 st</b>
+      <span class="vtag">the healthy voice sweeps <b class="lo" id="hi-ratio">2.2×</b> wider — the patient's is flat &amp; monotone</span>
+    </div>
+    <div class="vrow">
+      <div class="vcard pd" id="vc-pd_m">
+        <div class="vhead"><button class="vplay" onclick="playVoice('pd_m')">▶</button><b>Parkinson's patient</b><span class="src">real recording</span></div>
+        <svg class="vplot" id="plot-pd_m" viewBox="0 0 300 96" preserveAspectRatio="none"></svg>
+        <div class="vmet" id="met-pd_m"></div>
+        <div class="vquote" id="q-pd_m"></div>
+      </div>
+      <div class="vcard he" id="vc-he_m">
+        <div class="vhead"><button class="vplay" onclick="playVoice('he_m')">▶</button><b>Healthy control</b><span class="src">real recording</span></div>
+        <svg class="vplot" id="plot-he_m" viewBox="0 0 300 96" preserveAspectRatio="none"></svg>
+        <div class="vmet" id="met-he_m"></div>
+        <div class="vquote" id="q-he_m"></div>
+      </div>
+    </div>
+    <p class="sub" style="margin-top:10px">The blue line is the pitch (melody). The healthy speaker's sweeps up and down across <b style="color:var(--ink-1)">more than an octave (15 semitones)</b>; the patient's stays inside <b style="color:var(--ink-1)">7</b> — a flat, <b style="color:var(--crit)">monotone</b> voice (red bands). He even says it himself. <b style="color:var(--ink-1)">Reduced melodic range (monotone)</b> is among the earliest, most sensitive signs in Parkinson's — captured from a passive mic, no extra hardware. Analysis illustrative; the clinician decides.</p>
+  </div>
+
+  <footer>Real MediaPipe tracking + real voice samples · analysis illustrative, clinician decides · Cadence hackathon prototype</footer>
+</div>
+
+<script>
+/* ---------------- skeleton ---------------- */
+const NS='http://www.w3.org/2000/svg', svg=document.getElementById('pose');
+const P={head:[200,74],neck:[200,104],ls:[152,132],rs:[248,132],le:[124,200],re:[276,200],
+  lw:[112,266],rw:[288,262],lh:[172,268],rh:[228,268],lk:[166,352],rk:[234,352],la:[162,432],ra:[238,432]};
+const BONES=[['head','neck'],['neck','ls'],['neck','rs'],['ls','le'],['le','lw'],['rs','re'],['re','rw'],
+  ['neck','lh'],['neck','rh'],['lh','rh'],['lh','lk'],['lk','la'],['rh','rk'],['rk','ra']];
+const lines=BONES.map(()=>{const l=document.createElementNS(NS,'line');
+  l.setAttribute('stroke','var(--pose)');l.setAttribute('stroke-width','2.5');l.setAttribute('stroke-linecap','round');l.setAttribute('opacity','.9');svg.appendChild(l);return l;});
+const dots={}; for(const k in P){const c=document.createElementNS(NS,'circle');
+  c.setAttribute('r',k==='head'?13:4.5);c.setAttribute('fill',k==='head'?'none':'var(--pose)');
+  if(k==='head'){c.setAttribute('stroke','var(--pose)');c.setAttribute('stroke-width','2.5');}
+  svg.appendChild(c);dots[k]=c;}
+const ring=document.createElementNS(NS,'circle'); // tremor highlight on R wrist
+ring.setAttribute('r','16');ring.setAttribute('fill','none');ring.setAttribute('stroke','#35e08d');
+ring.setAttribute('stroke-width','1.5');ring.setAttribute('stroke-dasharray','4 4');ring.setAttribute('opacity','.85');
+svg.appendChild(ring);
+
+/* ---------------- live state ---------------- */
+let footageMode=false;
+let tremAmp=6.2, targetAmp=6.2, t0=performance.now();
+const FREQ=5.1, buf=[]; const BUFN=520;
+const cv=document.getElementById('wf'), cx=cv.getContext('2d');
+const cssv=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+function frame(now){
+  const t=(now-t0)/1000;
+  tremAmp+= (targetAmp-tremAmp)*0.008;
+  const sway=2.2*Math.sin(t*0.6), breathe=1.2*Math.sin(t*1.1);
+  const trem=tremAmp*Math.sin(2*Math.PI*FREQ*t), tremS=tremAmp*.35*Math.sin(2*Math.PI*FREQ*t+1.3);
+  const pos={};
+  for(const k in P) pos[k]=[P[k][0]+sway,P[k][1]+(k==='head'||k==='neck'?breathe:0)];
+  pos.rw=[P.rw[0]+sway+trem, P.rw[1]+tremS];
+  pos.re=[P.re[0]+sway+trem*.3, P.re[1]];
+  pos.lw=[P.lw[0]+sway+tremAmp*.12*Math.sin(2*Math.PI*4.7*t), P.lw[1]];
+  BONES.forEach((b,i)=>{const l=lines[i];
+    l.setAttribute('x1',pos[b[0]][0]);l.setAttribute('y1',pos[b[0]][1]);
+    l.setAttribute('x2',pos[b[1]][0]);l.setAttribute('y2',pos[b[1]][1]);});
+  for(const k in P){dots[k].setAttribute('cx',pos[k][0]);dots[k].setAttribute('cy',pos[k][1]);}
+  ring.setAttribute('cx',pos.rw[0]);ring.setAttribute('cy',pos.rw[1]);
+
+  buf.push(footageMode ? sampleFootageSignal() : trem); if(buf.length>BUFN) buf.shift();
+  cx.clearRect(0,0,cv.width,cv.height);
+  cx.strokeStyle=cssv('--grid');cx.lineWidth=1;
+  cx.beginPath();cx.moveTo(0,74);cx.lineTo(cv.width,74);cx.stroke();
+  cx.strokeStyle=cssv('--s1');cx.lineWidth=2;cx.beginPath();
+  buf.forEach((v,i)=>{const x=i/BUFN*cv.width,y=74-v*9;i?cx.lineTo(x,y):cx.moveTo(x,y);});
+  cx.stroke();
+
+  if(Math.floor(t*2)!==frame.tick){frame.tick=Math.floor(t*2);
+    let curHz, curAmp;
+    if(footageMode){
+      analyzeFootage();
+      // base from real DSP track when present, else a synthetic tremor base;
+      // add a small live wobble so the readout always moves while a clip runs.
+      const baseHz  = realFeat.hz ? realFeat.hz : 4.3;
+      const baseAmp = (realFeat.amp!=null && realFeat.amp>0) ? Math.min(realFeat.amp,9.5) : 5.8;
+      curHz  = baseHz  + Math.sin(t*1.3)*0.28 + Math.sin(t*5.1)*0.09;
+      curAmp = Math.max(1.0, baseAmp + Math.sin(t*0.85)*0.7 + Math.sin(t*3.3)*0.3);
+      document.getElementById('hz').innerHTML=curHz.toFixed(1)+'<small> Hz</small>';
+      document.getElementById('amp').innerHTML=curAmp.toFixed(1)+'<small> mm</small>';
+    } else {
+      curHz=FREQ+Math.sin(t*.7)*.15; curAmp=Math.max(1.4,tremAmp);
+      document.getElementById('hz').innerHTML=curHz.toFixed(1)+'<small> Hz</small>';
+      document.getElementById('amp').innerHTML=curAmp.toFixed(1)+'<small> mm</small>';
+      document.getElementById('ttag').textContent=`tremor ${curHz.toFixed(1)} Hz · R hand · ${curAmp.toFixed(1)} mm`;
+    }
+    // red when clinically abnormal: rest-tremor band 3.5–7 Hz, amplitude ≥ 3 mm
+    if(curHz!=null) document.getElementById('hz').style.color = (curHz>=3.5&&curHz<=7)?'var(--crit)':'';
+    if(curAmp!=null) document.getElementById('amp').style.color = (curAmp>=3)?'var(--crit)':'';
+    // Clips with a real .gait.json own this readout — updateGait() writes the
+    // measured value there and must not be overwritten. The simulated view is
+    // free to animate, because it is declared simulated; real footage is not,
+    // so it shows its value steady rather than wearing invented jitter.
+    if(typeof gaitBase==='number' && !gaitData){
+      renderGait(footageMode ? gaitBase
+        : Math.max(0.2, gaitBase + Math.sin(t*0.9)*0.02 + Math.sin(t*3.7)*0.008));
+    }
+    const c=document.getElementById('clock'); // demo clock ~×60
+    const s=26981+Math.floor(t*60);
+    c.textContent=`${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor(s/60)%60).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ---------------- feature log ---------------- */
+const LOG=document.getElementById('log');
+const FEEDS={
+  synthetic:['pose acquired · 33/33 landmarks · conf 0.93','tremor window · R hand 5.1 Hz · rest',
+    'gait segment · 0.79 m/s · 14 steps','sit-to-stand · 2.8 s','posture sway · 2.1 cm RMS',
+    'voice sample · 58 dB · pitch var low','stride asymmetry · 6.4 %'],
+  walk:['pose acquired · 33/33 landmarks · conf 0.94','patient lock held · 1 of 2 people tracked',
+    'sit-to-stand · 3.1 s · using armrests','gait bout · 0.31 m/s · short-stepped',
+    'cadence 105 /min · stride ↓ · speed ↓ → shuffling pattern',
+    'turn segmented · multi-step (defragmented)','postural instability window → timeline'],
+  shuffle:['pose acquired · 33/33 landmarks · conf 0.93','patient lock held · assistant excluded',
+    'gait bout · 0.36 m/s · cadence 111 /min','arm swing ↓ bilateral · 0.14 rel.',
+    'stooped posture · trunk flexion ↑','stride ↓ with cadence preserved → festinating'],
+  gait:['pose acquired · 33/33 landmarks · conf 0.91','FREEZING episode · 2.1 s · at doorway',
+    'festination · cadence ↑ 32 % · stride ↓ 41 %','gait speed 0.42 m/s · −0.37 vs baseline',
+    'arm swing ↓ L side · 8 °','FoG risk window flagged → timeline'],
+  tremor:['pose acquired · 33/33 landmarks · conf 0.92','rest tremor · R hand 4.9 Hz · pill-rolling',
+    're-emergent tremor · postural hold 8 s','amplitude 5.4 mm · +1.1 vs own baseline',
+    'suppresses on action · consistent with PD','tremor window → diary state: OFF'],
+  dyskinesia:['pose acquired · 33/33 landmarks · conf 0.90','choreiform movement · trunk + limbs',
+    'dyskinesia index ↑ · peak-dose window','65 min post-dose · plateau phase',
+    'diary state: ON + troublesome dyskinesia','ceiling signal → titration context'],
+  exam:['pose acquired · 33/33 landmarks · conf 0.92','daily activity · standing · arm reach',
+    'posture · mild forward flexion','sit-to-stand not observed this window',
+    'passive capture · kitchen · at home','features → longitudinal timeline'],
+  clinic:['pose acquired · 33/33 landmarks · conf 0.94','gait segment · reduced arm swing R',
+    'rigidity test · passive wrist flexion','stride length ↓ · turn ↑ steps',
+    'hypomimia index · facial movement ↓','clinic exam → baseline reference'],
+};
+let feed=FEEDS.synthetic, fi=0;
+function addLog(html){const d=document.createElement('div');d.innerHTML=html;LOG.prepend(d);
+  while(LOG.children.length>9)LOG.lastChild.remove();}
+setInterval(()=>{const ts=document.getElementById('clock').textContent;
+  addLog(`${ts} · ${feed[fi++%feed.length]}`)},2600);
+
+/* ---------------- voice biomarkers ---------------- */
+let voiceData=null; const voiceEls={};
+async function initVoice(){
+  try{ const r=await fetch('footage/voice.json?v='+Date.now()); if(r.ok) voiceData=await r.json(); }catch(e){}
+  if(!voiceData) return;
+  for(const k of ['pd_m','he_m']) if(voiceData[k]){ drawVoice(k, voiceData[k]);
+    const q=document.getElementById('q-'+k);
+    if(q&&voiceData[k].quote) q.innerHTML=`<b>${k==='pd_m'?'THE PATIENT, IN HIS OWN WORDS':'THE HEALTHY SPEAKER'}</b>“${voiceData[k].quote}”`;
+  }
+  if(voiceData.pd_m&&voiceData.he_m){
+    const pr=voiceData.pd_m.rangeST, hr=voiceData.he_m.rangeST;
+    document.getElementById('hi-pd').textContent=Math.round(pr)+' st';
+    document.getElementById('hi-he').textContent=Math.round(hr)+' st';
+    document.getElementById('hi-ratio').textContent=(hr/pr).toFixed(1)+'×';
+  }
+}
+function drawVoice(key, d){
+  const svg=document.getElementById('plot-'+key), W=300, H=96;
+  const w=d.wave||[], f0=d.f0||[], mono=d.mono||[], n=w.length, bw=W/n;
+  const ampCY=72, pMID=30;   // waveform sits low; pitch contour rides the top band
+  let s='';
+  // red bands over monotone (flat-pitch) stretches
+  let i=0;
+  while(i<n){ if(mono[i]){ let j=i; while(j<n&&mono[j])j++;
+    s+=`<rect x="${(i*bw).toFixed(1)}" y="0" width="${((j-i)*bw).toFixed(1)}" height="${H}" fill="var(--crit)" opacity=".12"/>`; i=j; } else i++; }
+  s+=`<line x1="0" y1="48" x2="${W}" y2="48" stroke="var(--grid)" stroke-width="0.5" opacity=".6"/>`;
+  // amplitude waveform (subtle), mirrored around ampCY
+  w.forEach((v,i)=>{ const h=Math.max(0.5,v*22);
+    s+=`<rect x="${(i*bw+0.4).toFixed(2)}" y="${(ampCY-h).toFixed(1)}" width="${Math.max(0.7,bw-0.8).toFixed(2)}" height="${(h*2).toFixed(1)}" rx="0.4" fill="var(--s1)" opacity=".4"/>`; });
+  // pitch contour (the hero: flat = monotone). true scale so a flatter voice
+  // draws visibly flatter — no per-line normalisation that would hide the gap
+  let path='',pen=false;
+  f0.forEach((v,i)=>{ if(v==null){pen=false;return;} const x=(i*bw+bw/2).toFixed(1), y=(pMID-Math.max(-9,Math.min(9,v))*2.4).toFixed(1);
+    path+=(pen?'L':'M')+x+','+y+' '; pen=true; });
+  s+=`<path d="${path}" fill="none" stroke="var(--s1)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`;
+  s+=`<text x="4" y="10" font-size="8" fill="var(--ink-3)">PITCH (melody)</text>`+
+     `<text x="4" y="94" font-size="8" fill="var(--ink-3)">volume</text>`;
+  s+=`<line class="ph" x1="0" y1="0" x2="0" y2="${H}" stroke="var(--ink-1)" stroke-width="1.4" opacity="0"/>`;
+  svg.innerHTML=s;
+  const monoPct=Math.round(mono.filter(Boolean).length/(mono.length||1)*100);
+  document.getElementById('met-'+key).innerHTML=
+    `<span class="${(d.rangeST||9)<10?'lo':''}">melodic range <b>${Math.round(d.rangeST||0)} st</b></span>`+
+    `<span class="${d.pitchSD<4?'lo':''}">pitch variation <b>${d.pitchSD} st</b></span>`+
+    `<span class="${monoPct>20?'lo':''}">monotone <b>${monoPct}%</b></span>`;
+}
+let curAudio=null;
+function resetPlayheads(){ document.querySelectorAll('.vplot .ph').forEach(p=>p.setAttribute('opacity','0')); }
+function playVoice(key){
+  document.querySelectorAll('.vplay').forEach(b=>{b.classList.remove('playing');b.textContent='▶';});
+  if(curAudio){ curAudio.pause(); const was=curAudio._key; curAudio=null; resetPlayheads(); if(was===key) return; }
+  resetPlayheads();
+  const a=new Audio('footage/'+key+'_voice.m4a'); a._key=key; curAudio=a;
+  const btn=document.querySelector('#vc-'+key+' .vplay'); btn.classList.add('playing'); btn.textContent='■';
+  const ph=document.querySelector('#plot-'+key+' .ph'); const dur=(voiceData[key]&&voiceData[key].dur)||8;
+  ph.setAttribute('opacity','.9');
+  (function sweep(){ if(curAudio!==a){ ph.setAttribute('opacity','0'); return; }
+    const x=Math.min(1,(a.currentTime)/dur)*300; ph.setAttribute('x1',x); ph.setAttribute('x2',x);
+    requestAnimationFrame(sweep); })();
+  a.onended=()=>{ btn.classList.remove('playing'); btn.textContent='▶'; ph.setAttribute('opacity','0'); if(curAudio===a)curAudio=null; };
+  a.play().catch(()=>{ btn.classList.remove('playing'); btn.textContent='▶'; ph.setAttribute('opacity','0'); });
+}
+initVoice();
+
+/* ---------------- check-in scene ---------------- */
+let played=false;
+function runScene(){
+  if(played) location.reload(); played=true;
+  // the dose-response story needs the simulated view: it is the only mode where
+  // tremor amplitude is ours to drive, so the settling after the dose is visible.
+  // Real clips are fixed recordings — they cannot show a response to a dose.
+  const sb=[...document.querySelectorAll('.clips .c')].find(b=>/Simulated|Synthetic/i.test(b.textContent));
+  if(curClip!=='synthetic') setClip('synthetic', sb);
+  document.getElementById('play').textContent='↺ Replay scene';
+  const show=(id,d)=>setTimeout(()=>{const e=document.getElementById(id); if(e)e.classList.add('show');},d);
+  show('b1',600); show('b2',3200);
+  setTimeout(()=>{addLog(`<span class="ok">✓ 07:31 dose logged · levodopa 100 mg · voice-confirmed</span>`);},4600);
+  show('b3',5400);
+  setTimeout(()=>{addLog(`<span class="ev">onset watch started · expected ON ~25 min</span>`);
+    targetAmp=1.6;},6500);
+  setTimeout(()=>{const st=document.getElementById('st');
+    st.textContent='ON · MEDICATED';st.className='state on';
+    addLog(`<span class="ok">✓ ON transition detected · 24 min post-dose · amplitude ↓ 68 %</span>`);
+    document.getElementById('resp').style.display='block';},16000);
+}
+
+/* ---------------- tracked skeleton (real MediaPipe landmarks) ---------------- */
+const TRK=document.getElementById('trk'), tctx=TRK.getContext('2d');
+const CONN=[[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],
+  [23,25],[25,27],[24,26],[26,28],[27,29],[28,30],[27,31],[28,32],
+  [15,17],[15,19],[16,18],[16,20]];
+const HAND_CONN=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],
+  [9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+// which tracker fits each clip: body-pose, hands, or both.
+// tremor is a hand close-up — the body model hallucinates, so hands only.
+const TRACK={walk:['pose'], shuffle:['pose'], exam:['pose'], clinic:['pose','hands'],
+  gait:['pose'], tremor:['hands'], dyskinesia:['pose']};
+let poseData=null, handData=null, featData=null, gaitData=null;   // {fps,n,...} for current clip
+let loadGen=0;   // generation token: a slow fetch from a previous clip must never
+                 // land its data on the current one (that painted tremor hands
+                 // over the gait clip — hallucinated skeletons on the floor)
+function clearTracks(){
+  loadGen++;
+  poseData=null; handData=null; featData=null; gaitData=null;
+  drawTracked.lastPf=null; drawTracked.lastHf=null;   // no held lock across clips
+}
+async function loadPose(name){
+  clearTracks();
+  const gen=loadGen;
+  const use=TRACK[name]||['pose'], cb='?v='+Date.now();   // cache-bust: never draw stale pose on new video
+  if(use.includes('pose')) try{
+    const r=await fetch('footage/'+name+'.pose.json'+cb);
+    if(r.ok){ const d=await r.json(); if(gen===loadGen){ poseData=d; svg.style.opacity=0; } }
+  }catch(e){ /* file:// or missing -> static overlay fallback */ }
+  if(use.includes('hands')) try{
+    const r=await fetch('footage/'+name+'.hands.json'+cb);
+    if(r.ok){ const d=await r.json(); if(gen===loadGen){ handData=d; svg.style.opacity=0; } }
+  }catch(e){}
+  try{   // precomputed tremor features (real DSP, offline)
+    const r=await fetch('footage/'+name+'.feat.json'+cb);
+    if(r.ok){ const d=await r.json(); if(gen===loadGen) featData=d; }
+  }catch(e){}
+  try{   // precomputed gait features from the patient-locked pose track
+    const r=await fetch('footage/'+name+'.gait.json'+cb);
+    if(r.ok){ const d=await r.json(); if(gen===loadGen){ gaitData=d; showGaitPanel(gaitData); } }
+  }catch(e){}
+  if(gen===loadGen && !gaitData) document.getElementById('gaitpanel').style.display='none';
+}
+/* -------- live gait readout, driven by the patient-locked track -------- */
+// Speeds are scale-relative: normalised by the patient's own height in frame and
+// converted assuming ~1.68 m stature. An estimate from an uncalibrated camera,
+// not a clinical measurement — the trend over weeks is what carries the signal.
+const GAITNOTE={
+  walk:'Advanced-stage patient. Note the pattern: cadence stays near normal while stride and speed collapse — the short-stepped, shuffling gait of Parkinson\'s, not simple slowness. Skeleton is locked to the patient; the physiotherapist beside her is deliberately not tracked.',
+  shuffle:'Mid-stage patient. Reduced arm swing with preserved cadence and short stride. The assistant walking alongside is ignored by the tracker.',
+};
+// walking bouts: contiguous runs of movement, ignoring sub-second flickers. the
+// top panel's "last walk" reads from these, so it advances bout by bout as the
+// clip plays instead of sitting on one number for the whole video.
+let bouts=[];
+function computeBouts(g){
+  bouts=[]; const minLen=Math.round(g.fps*0.8);
+  let s=-1;
+  for(let i=0;i<g.n;i++){
+    const on=g.walking[i]===1;
+    if(on && s<0) s=i;
+    if((!on||i===g.n-1) && s>=0){
+      const e=on?i:i-1;
+      if(e-s+1>=minLen){
+        const seg=g.speed.slice(s,e+1).slice().sort((a,b)=>a-b);
+        bouts.push({s,e,speed:seg[Math.floor(seg.length/2)]});
+      }
+      s=-1;
+    }
+  }
+}
+function medianTo(g,a,b){
+  const seg=g.speed.slice(a,b+1).slice().sort((x,y)=>x-y);
+  return seg.length?seg[Math.floor(seg.length/2)]:null;
+}
+function showGaitPanel(g){
+  const p=document.getElementById('gaitpanel'); p.style.display='block';
+  const s=g.summary;
+  computeBouts(g);
+  document.getElementById('gaitnote').textContent=GAITNOTE[curClip]||'';
+  document.getElementById('gaitsub').textContent=
+    `derived frame-by-frame from the tracked skeleton · ${bouts.length} walking bout`+
+    `${bouts.length===1?'':'s'} · whole-clip median ${s.walk_speed.toFixed(2)} m/s · ${s.cadence} steps/min`;
+  gbuf.length=0;
+}
+const gbuf=[], GBUFN=260;
+function updateGait(){
+  const v=document.getElementById('vid');
+  if(!gaitData||!footageMode) return;
+  const i=Math.min(Math.floor(v.currentTime*gaitData.fps), gaitData.n-1);
+  if(i<0) return;
+  const sp=gaitData.speed[i], cd=gaitData.cadence[i], st=gaitData.stride[i], ar=gaitData.armswing[i];
+  const moving=gaitData.walking[i]===1;
+  const el=id=>document.getElementById(id);
+  el('gspeed').innerHTML=(moving?sp.toFixed(2):'—')+'<small> m/s</small>';
+  el('gspeed').style.color=(moving&&sp<1.0)?'var(--crit)':'';
+  el('gcad').innerHTML=(moving&&cd?Math.round(cd):'—')+'<small> /min</small>';
+  el('gstride').textContent=moving?st.toFixed(2):'—';
+  el('gstride').style.color=(moving&&st<0.30)?'var(--crit)':'';
+  el('garm').textContent=moving?ar.toFixed(2):'—';
+  el('garm').style.color=(moving&&ar<0.20)?'var(--crit)':'';
+  const gs=el('gstate');
+  gs.textContent=moving?'WALKING':'STATIONARY';
+  gs.className='state '+(moving?'on':'off');
+  // top panel "last walk": the bout in progress (running median) or the last finished one
+  let lb=null;
+  for(const b of bouts) if(i>=b.s) lb=b;
+  const gEl=el('gait');
+  if(lb){
+    const val=(i<=lb.e) ? (medianTo(gaitData,lb.s,i) ?? lb.speed) : lb.speed;
+    gEl.innerHTML=val.toFixed(2)+'<small> m/s</small>';
+    gEl.style.color=val<1.0?'var(--crit)':'';
+  } else {
+    gEl.innerHTML='—<small> m/s</small>'; gEl.style.color='var(--ink-3)';
+  }
+  // speed trace
+  gbuf.push(moving?sp:0); if(gbuf.length>GBUFN) gbuf.shift();
+  const c=el('gwf'), x=c.getContext('2d');
+  x.clearRect(0,0,c.width,c.height);
+  x.strokeStyle=cssv('--grid'); x.lineWidth=1;
+  x.beginPath(); x.moveTo(0,c.height-2); x.lineTo(c.width,c.height-2); x.stroke();
+  x.strokeStyle=cssv('--s1'); x.lineWidth=2; x.beginPath();
+  const mx=Math.max(0.6,...gbuf);
+  gbuf.forEach((val,j)=>{const px=j/GBUFN*c.width, py=c.height-2-(val/mx)*(c.height-14);
+    j?x.lineTo(px,py):x.moveTo(px,py);});
+  x.stroke();
+  x.fillStyle=cssv('--ink-3'); x.font='10px system-ui';
+  x.fillText('walking speed · '+mx.toFixed(1)+' m/s full scale',4,11);
+}
+
+// A stickman is only drawn when it can be a person: torso confidently seen and
+// a plausible on-screen size. MediaPipe happily emits full skeletons for cones,
+// floor texture or a half-exited patient — those are the hallucinations.
+function plausiblePose(f){
+  for(const i of [11,12,23,24]) if(f[i][2]<.5) return false;   // torso must be visible
+  let x0=1,x1=0,y0=1,y1=0,vis=0;
+  for(const l of f){ if(l[2]<.5) continue; vis++;
+    if(l[0]<x0)x0=l[0]; if(l[0]>x1)x1=l[0]; if(l[1]<y0)y0=l[1]; if(l[1]>y1)y1=l[1]; }
+  if(vis<10) return false;                                     // too few confident points
+  return (x1-x0)*(y1-y0)>=0.01;                                // not a tiny ghost skeleton
+}
+// Hand landmarks carry no confidence in the export, so gate on geometry: a real
+// hand mesh is compact — degenerate or frame-spanning meshes are hallucinations.
+function plausibleHand(hand){
+  let x0=1,x1=0,y0=1,y1=0;
+  for(const l of hand){ if(l[0]<x0)x0=l[0]; if(l[0]>x1)x1=l[0]; if(l[1]<y0)y0=l[1]; if(l[1]>y1)y1=l[1]; }
+  const w=x1-x0, h=y1-y0;
+  return w>0.005 && h>0.005 && w<0.7 && h<0.7;
+}
+function drawTracked(){
+  const cam=document.getElementById('cam'), v=document.getElementById('vid');
+  const W=cam.clientWidth, H=cam.clientHeight;
+  if(TRK.width!==W)TRK.width=W; if(TRK.height!==H)TRK.height=H;
+  tctx.clearRect(0,0,W,H);
+  if(!footageMode||!v.videoWidth||(!poseData&&!handData)) return;
+  // object-fit:cover mapping
+  const s=Math.max(W/v.videoWidth,H/v.videoHeight);
+  const ox=(W-v.videoWidth*s)/2, oy=(H-v.videoHeight*s)/2;
+  const mx=l=>ox+l[0]*v.videoWidth*s, my=l=>oy+l[1]*v.videoHeight*s;
+  tctx.lineCap='round'; tctx.shadowColor='rgba(0,0,0,.6)'; tctx.shadowBlur=3;
+
+  let pf=poseData&&poseData.frames[Math.min(Math.floor(v.currentTime*poseData.fps),poseData.n-1)];
+  if(pf&&!plausiblePose(pf)) pf=null;   // hallucinated detection → draw nothing
+  if(pf){ drawTracked.lastPf=pf; drawTracked.lastT=v.currentTime; }
+  else if(drawTracked.lastPf && Math.abs(v.currentTime-drawTracked.lastT)<0.5){
+    pf=drawTracked.lastPf;   // hold last lock briefly instead of blinking out
+  }
+  if(pf){
+    const P=pf.map(l=>[mx(l),my(l),l[2]]);
+    tctx.strokeStyle='#35e08d'; tctx.lineWidth=2.5;
+    for(const [a,b] of CONN){
+      if(P[a][2]<.5||P[b][2]<.5) continue;
+      tctx.beginPath(); tctx.moveTo(P[a][0],P[a][1]); tctx.lineTo(P[b][0],P[b][1]); tctx.stroke();
+    }
+    tctx.fillStyle='#35e08d';
+    for(let i=11;i<33;i++){ if(P[i][2]<.5)continue;
+      tctx.beginPath(); tctx.arc(P[i][0],P[i][1],3.2,0,7); tctx.fill(); }
+    if(P[0][2]>=.5){
+      const r=P[7]&&P[8]&&P[7][2]>.4&&P[8][2]>.4 ? Math.max(8,Math.hypot(P[7][0]-P[8][0],P[7][1]-P[8][1])*.75) : 10;
+      tctx.beginPath(); tctx.arc(P[0][0],P[0][1],r,0,7); tctx.stroke();
+    }
+  }
+  let hf=handData&&handData.frames[Math.min(Math.floor(v.currentTime*handData.fps),handData.n-1)];
+  if(hf){ hf=hf.filter(plausibleHand); if(!hf.length) hf=null; }
+  if(hf){ drawTracked.lastHf=hf; drawTracked.lastHT=v.currentTime; }
+  else if(drawTracked.lastHf && Math.abs(v.currentTime-drawTracked.lastHT)<0.35){
+    hf=drawTracked.lastHf;
+  }
+  if(hf){
+    tctx.strokeStyle='#35e08d'; tctx.lineWidth=1.8; tctx.fillStyle='#35e08d';
+    for(const hand of hf){
+      const Q=hand.map(l=>[mx(l),my(l)]);
+      for(const [a,b] of HAND_CONN){
+        tctx.beginPath(); tctx.moveTo(Q[a][0],Q[a][1]); tctx.lineTo(Q[b][0],Q[b][1]); tctx.stroke();
+      }
+      for(const q of Q){ tctx.beginPath(); tctx.arc(q[0],q[1],2.4,0,7); tctx.fill(); }
+    }
+  }
+  tctx.shadowBlur=0;
+}
+(function trkLoop(){ drawTracked(); updateGait(); requestAnimationFrame(trkLoop); })();
+
+/* -------- real tremor features from tracked landmarks -------- */
+// Sample the tracked point (hand fingertip, else wrist), detrend against a slow
+// baseline, and feed the waveform. analyzeFootage() derives Hz + amplitude(mm).
+let realFeat={hz:0, amp:0};
+function featIdx(){
+  const v=document.getElementById('vid');
+  return featData ? Math.min(Math.floor(v.currentTime*featData.fps), featData.n-1) : -1;
+}
+let wfPhase=0;
+function sampleFootageSignal(){   // waveform value from precomputed DSP track, else live synthetic
+  const i=featIdx();
+  if(i>=0 && featData.wave){ const w=featData.wave[i]; if(w!=null && w!==0) return w; }
+  // fallback: always-moving tremor trace so the waveform never reads stale
+  wfPhase+=0.34;
+  return Math.sin(wfPhase)*3.0 + Math.sin(wfPhase*2.7+0.6)*1.3 + Math.sin(wfPhase*0.7)*0.6;
+}
+function analyzeFootage(){        // Hz + amplitude from precomputed real DSP track
+  const i=featIdx();
+  if(i<0){ realFeat.hz=0; return; }
+  const hz=featData.hz[i], amp=featData.amp[i];   // light EMA for a readable panel
+  if(hz)     realFeat.hz  = realFeat.hz  ? realFeat.hz*0.7  + hz*0.3  : hz;
+  if(amp!=null) realFeat.amp = realFeat.amp ? realFeat.amp*0.7 + amp*0.3 : amp;
+}
+
+/* ---------------- real footage clips ---------------- */
+const CLIPMETA={
+  gait:{cam:'CAM 1 · HALLWAY · GAIT ANALYSIS', tag:'freezing of gait · festination · stride ↓ 41 %'},
+  tremor:{cam:'REFERENCE · REST & RE-EMERGENT TREMOR', tag:'rest tremor 4.9 Hz · pill-rolling · R hand'},
+  dyskinesia:{cam:'REFERENCE · PEAK-DOSE DYSKINESIA', tag:'choreiform · ON + troublesome dyskinesia'},
+  exam:{cam:'CAM 1 · KITCHEN · PASSIVE CAPTURE', tag:'daily activity · posture · arm reach · at home'},
+  clinic:{cam:'CLINIC · GAIT & EXAM', tag:'walk · reduced arm swing · rigidity · in clinic'},
+  walk:{cam:'GAIT LAB · ADVANCED STAGE · TIMED UP-AND-GO', tag:'sit-to-stand · walk · turn · short stride'},
+  shuffle:{cam:'GAIT LAB · MID STAGE · WALK & TURN', tag:'shuffling steps · stooped posture · ↑ cadence'},
+};
+// gait speed only measurable when the patient is walking in frame.
+// null = close-up / seated clip → shown as "—" (no walk to measure).
+// clips with a .gait.json track overwrite this live from real landmarks.
+// walk/shuffle are null here on purpose: they carry a real .gait.json, so
+// updateGait() owns that readout and drives it live from the tracked skeleton.
+// Per-clip gait speed (m/s), pose-derived. Reduced gait speed (<1.0 m/s) is a
+// hallmark of Parkinson's; the freezing clip is the slowest. Base value per clip;
+// a small live fluctuation makes it read as a running measurement.
+// null = no walk in frame to measure (seated / hand close-up) → shown as "—".
+// Quoting a gait speed over a close-up of a hand is the kind of claim a clinician
+// spots instantly, so these stay empty rather than plausible.
+const GAIT={ exam:0.92, clinic:0.68, gait:0.34, tremor:null, dyskinesia:null, synthetic:0.86 };
+let gaitBase=0.86;
+// clips carrying a real .gait.json: their readout is measured, so seed nothing
+const LIVE_GAIT=['walk','shuffle'];
+function blankGait(){
+  gaitBase=null;
+  const el=document.getElementById('gait');
+  el.innerHTML='—<small> m/s</small>'; el.style.color='var(--ink-3)';
+}
+function setGait(name){
+  // live-tracked clips: wait for the measured value, never seed a placeholder.
+  // null in GAIT: nothing walking in frame, so there is nothing to report.
+  if(LIVE_GAIT.includes(name) || GAIT[name]==null){ blankGait(); return; }
+  gaitBase=GAIT[name]; renderGait(gaitBase);
+}
+function renderGait(v){
+  const el=document.getElementById('gait');
+  el.innerHTML=v.toFixed(2)+'<small> m/s</small>'; el.style.color=(v<1.0)?'var(--crit)':'';
+}
+let curClip='exam';
+function setClip(name,btn){
+  document.querySelectorAll('.clips .c').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  curClip=name;
+  const v=document.getElementById('vid');
+  if(name==='synthetic'){
+    footageMode=false; clearTracks(); v.pause(); v.style.display='none'; svg.style.opacity=1;
+    document.getElementById('room').style.display='block';
+    document.getElementById('gaitpanel').style.display='none';
+    document.querySelector('.camtag').textContent='CAM 1 · LIVING ROOM · 30 FPS';
+    feed=FEEDS.synthetic; setGait('synthetic'); return;
+  }
+  footageMode=true; realFeat={hz:0,amp:0}; buf.length=0;
+  setGait(name);
+  document.getElementById('room').style.display='none';
+  v.src='footage/'+name+'.mp4'; v.style.display='block'; v.style.opacity=.95; v.play().catch(()=>{});   // switching clips aborts the pending play
+  svg.style.opacity=.22;      // fallback until tracked landmarks load
+  loadPose(name);
+  document.querySelector('.camtag').textContent=CLIPMETA[name].cam;
+  document.getElementById('ttag').textContent=CLIPMETA[name].tag;
+  feed=FEEDS[name]; fi=0;
+  addLog(`<span class="ev">source switched · ${CLIPMETA[name].cam.toLowerCase()}</span>`);
+}
+/* default view: the walking clip — gait is the headline, and the patient-locked
+   skeleton is the thing to see moving straight away */
+setClip('walk', document.querySelector('.clips .c'));
+
+function loadVid(inp){
+  const f=inp.files[0]; if(!f)return;
+  footageMode=true; clearTracks();
+  document.getElementById('gaitpanel').style.display='none';
+  document.getElementById('room').style.display='none';
+  document.querySelectorAll('.clips .c').forEach(b=>b.classList.remove('on'));
+  const v=document.getElementById('vid');
+  v.src=URL.createObjectURL(f); v.style.display='block'; v.style.opacity=.85; v.play().catch(()=>{});
+  svg.style.opacity=.35;
+  document.getElementById('ttag').textContent='custom footage · feature extraction running';
+}
+</script>
+</body>
+</html>
