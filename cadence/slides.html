@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cadence — Pitch</title>
+<style>
+  :root{
+    --page:#0d0d0d; --surface:#1a1a19; --ink-1:#fff; --ink-2:#c3c2b7; --ink-3:#898781;
+    --border:rgba(255,255,255,.12); --s1:#3987e5; --good:#0ca30c; --warn:#c98500; --crit:#d03b3b;
+    --on:#1c5cab; --off:#d03b3b; --dysk:#c98500;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--page);color:var(--ink-1);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;padding:7vh 9vw;gap:2.4vh}
+  .slide.on{display:flex}
+  .kick{font-size:13px;font-weight:700;letter-spacing:.14em;color:var(--s1);text-transform:uppercase}
+  h1{font-size:5.6vh;font-weight:700;letter-spacing:-.015em;line-height:1.12;max-width:24ch}
+  h1 em{font-style:normal;color:var(--s1)}
+  .lede{font-size:2.5vh;color:var(--ink-2);max-width:58ch}
+  .lede b{color:var(--ink-1)}
+  .viz{width:100%;max-width:1100px}
+  .cap{color:var(--ink-3);font-size:1.9vh}
+  .legend{display:flex;gap:2vw;font-size:1.8vh;color:var(--ink-2);flex-wrap:wrap}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .legend i{width:13px;height:13px;border-radius:3px;display:inline-block}
+  .pipe{display:flex;gap:1vw;align-items:stretch;flex-wrap:wrap}
+  .pipe .st{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.8vh 1.3vw;flex:1;min-width:140px}
+  .pipe .st b{display:block;font-size:1.9vh;margin-bottom:.3vh}
+  .pipe .st span{color:var(--ink-2);font-size:1.6vh}
+  .pipe .arr{align-self:center;color:var(--ink-3);font-size:2.4vh}
+  .demos{display:flex;gap:1.6vw;flex-wrap:wrap}
+  .demo{flex:1;min-width:220px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2.6vh 1.8vw;text-decoration:none;color:var(--ink-1);display:block}
+  .demo:hover{border-color:var(--s1)}
+  .demo .n{font-size:1.6vh;font-weight:700;color:var(--s1);letter-spacing:.1em}
+  .demo b{display:block;font-size:2.6vh;margin:.8vh 0 .6vh}
+  .demo span{color:var(--ink-2);font-size:1.9vh}
+  .demo .go{display:block;margin-top:1.6vh;color:var(--s1);font-weight:650;font-size:1.9vh}
+  .quiet{color:var(--ink-3);font-size:1.7vh}
+  .foot{position:fixed;bottom:2.4vh;left:9vw;right:9vw;display:flex;justify-content:space-between;color:var(--ink-3);font-size:1.6vh}
+  .robot{display:flex;gap:3vw;align-items:center;flex-wrap:wrap}
+  .robot .bod{font-size:11vh;line-height:1}
+  kbd{background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:1px 7px;font:600 12px system-ui}
+</style>
+</head>
+<body>
+
+<!-- 1 · TITLE -->
+<section class="slide on">
+  <div class="kick">Cadence · eMed Chronic Health Hackathon</div>
+  <h1>Closing the <em>snapshot gap</em> in Parkinson's care.</h1>
+  <p class="lede">One goal: help people with Parkinson's <b>keep the life they have now, for as long as possible.</b></p>
+  <p class="quiet">Karina · Daniel · Henry · [name] — everything shown is running.</p>
+</section>
+
+<!-- 2 · YEAR TIMELINE — the snapshot problem -->
+<section class="slide">
+  <div class="kick">The snapshot problem</div>
+  <h1>A neurologist sees <em>2 dots</em>. The disease is the line.</h1>
+  <svg class="viz" viewBox="0 0 1000 190">
+    <line x1="40" y1="95" x2="960" y2="95" stroke="#383835" stroke-width="2"/>
+    <!-- hidden events between visits -->
+    <g>
+      <circle cx="180" cy="95" r="4" fill="var(--off)"/><circle cx="235" cy="95" r="4" fill="var(--off)"/>
+      <circle cx="290" cy="95" r="5" fill="var(--off)"/><circle cx="352" cy="95" r="5" fill="var(--off)"/>
+      <circle cx="410" cy="95" r="6" fill="var(--off)"/><circle cx="472" cy="95" r="6" fill="var(--off)"/>
+      <circle cx="533" cy="95" r="7" fill="var(--off)"/><circle cx="590" cy="95" r="7" fill="var(--off)"/>
+      <circle cx="648" cy="95" r="8" fill="var(--off)"/><circle cx="705" cy="95" r="8" fill="var(--off)"/>
+      <circle cx="762" cy="95" r="9" fill="var(--off)"/><circle cx="820" cy="95" r="9" fill="var(--off)"/>
+      <text x="500" y="52" text-anchor="middle" font-size="15" fill="#898781" font-style="italic">OFF mornings · freezing · a fall · dyskinesia creeping in — growing, and invisible</text>
+      <path d="M240 62 L820 62" stroke="#383835" stroke-width="1"/>
+      <path d="M240 62 l0 6 M820 62 l0 6" stroke="#383835" stroke-width="1"/>
+      <text x="878" y="100" font-size="13" fill="var(--off)" font-weight="600">✕ fall</text>
+      <circle cx="862" cy="95" r="9" fill="var(--off)"/>
+    </g>
+    <!-- the two visits -->
+    <g font-size="14" fill="#c3c2b7" font-weight="600">
+      <line x1="80" y1="70" x2="80" y2="120" stroke="var(--s1)" stroke-width="4"/>
+      <text x="80" y="145" text-anchor="middle">clinic visit</text>
+      <text x="80" y="165" text-anchor="middle" fill="#898781" font-weight="400">15 min · a good day</text>
+      <line x1="920" y1="70" x2="920" y2="120" stroke="var(--s1)" stroke-width="4"/>
+      <text x="920" y="145" text-anchor="middle">next visit</text>
+      <text x="920" y="165" text-anchor="middle" fill="#898781" font-weight="400">6–18 months later</text>
+    </g>
+  </svg>
+  <p class="lede">Between the dots, dosing runs open-loop. The gold-standard fix? A <b>paper diary</b> — self-rated every 30 minutes, for 3 days, by someone with a movement disorder.</p>
+</section>
+
+<!-- 2b · JOURNEY — snapshots vs longitudinal -->
+<section class="slide">
+  <div class="kick">The Parkinson's journey</div>
+  <h1>15–20 years of disease. Care runs on <em>minutes</em> of it.</h1>
+  <svg class="viz" viewBox="0 0 1000 250">
+    <!-- row 1: today — snapshot visits -->
+    <text x="0" y="40" font-size="14" fill="#c3c2b7" font-weight="600">Today</text>
+    <line x1="90" y1="36" x2="985" y2="36" stroke="#383835" stroke-width="2"/>
+    <g stroke="var(--s1)" stroke-width="3">
+      <line x1="95" y1="26" x2="95" y2="46"/><line x1="132" y1="26" x2="132" y2="46"/>
+      <line x1="170" y1="26" x2="170" y2="46"/><line x1="215" y1="26" x2="215" y2="46"/>
+      <line x1="252" y1="26" x2="252" y2="46"/><line x1="290" y1="26" x2="290" y2="46"/>
+      <line x1="335" y1="26" x2="335" y2="46"/><line x1="372" y1="26" x2="372" y2="46"/>
+      <line x1="410" y1="26" x2="410" y2="46"/><line x1="455" y1="26" x2="455" y2="46"/>
+      <line x1="548" y1="26" x2="548" y2="46"/>
+      <line x1="590" y1="26" x2="590" y2="46"/><line x1="635" y1="26" x2="635" y2="46"/>
+      <line x1="672" y1="26" x2="672" y2="46"/><line x1="718" y1="26" x2="718" y2="46"/>
+      <line x1="762" y1="26" x2="762" y2="46"/><line x1="800" y1="26" x2="800" y2="46"/>
+      <line x1="845" y1="26" x2="845" y2="46"/><line x1="890" y1="26" x2="890" y2="46"/>
+      <line x1="935" y1="26" x2="935" y2="46"/><line x1="978" y1="26" x2="978" y2="46"/>
+    </g>
+    <path d="M460 20 L544 20" stroke="var(--off)" stroke-width="1.5"/>
+    <text x="502" y="12" text-anchor="middle" font-size="12" fill="var(--off)">a missed year</text>
+    <text x="90" y="68" font-size="13" fill="#898781">a 15-min appointment every 6–12 months — often longer · each one a snapshot, on a good day</text>
+    <!-- row 2: with cadence — longitudinal -->
+    <text x="0" y="136" font-size="14" fill="#c3c2b7" font-weight="600">Cadence</text>
+    <rect x="90" y="122" width="895" height="20" rx="4" fill="var(--on)"/>
+    <text x="90" y="164" font-size="13" fill="#898781">🎙 voice · 🎥 movement — captured passively at home, every day of all 15–20 years</text>
+    <!-- axis + totals -->
+    <g font-size="12" fill="#898781">
+      <text x="90" y="196">year 0 · diagnosis</text>
+      <text x="985" y="196" text-anchor="end">year 20</text>
+    </g>
+    <g font-size="15" font-weight="600">
+      <text x="90" y="232" fill="var(--off)">snapshots: ~25 visits ≈ 6 hours of observation</text>
+      <text x="985" y="232" text-anchor="end" fill="var(--s1)">longitudinal: ~7,300 days of voice + visual data</text>
+    </g>
+  </svg>
+  <p class="lede">The doctor has only ever seen the dots. Cadence hands them <b>the line</b> — a longitudinal record of voice and movement, so every scarce appointment starts from what actually happened.</p>
+</section>
+
+<!-- 3 · DAY TIMELINE — wearing-off is a timing pattern -->
+<section class="slide">
+  <div class="kick">Why timing is the whole game</div>
+  <h1>Levodopa fades in ~90 min. <em>Wearing-off is a time-of-day pattern.</em></h1>
+  <svg class="viz" viewBox="0 0 1000 205">
+    <!-- month 1 row -->
+    <text x="0" y="38" font-size="14" fill="#c3c2b7" font-weight="600">Month 1</text>
+    <g>
+      <rect x="90" y="22" width="86" height="24" rx="3" fill="var(--off)"/>
+      <rect x="178" y="22" width="200" height="24" rx="3" fill="var(--on)"/>
+      <rect x="380" y="22" width="26" height="24" rx="3" fill="var(--off)"/>
+      <rect x="408" y="22" width="190" height="24" rx="3" fill="var(--on)"/>
+      <rect x="600" y="22" width="26" height="24" rx="3" fill="var(--off)"/>
+      <rect x="628" y="22" width="190" height="24" rx="3" fill="var(--on)"/>
+      <rect x="820" y="22" width="26" height="24" rx="3" fill="var(--off)"/>
+      <rect x="848" y="22" width="94" height="24" rx="3" fill="var(--on)"/>
+      <rect x="944" y="22" width="46" height="24" rx="3" fill="var(--off)"/>
+    </g>
+    <!-- clinic dot -->
+    <circle cx="300" cy="10" r="6" fill="#898781"/>
+    <text x="312" y="14" font-size="13" fill="#898781">the one moment a clinic sees</text>
+    <!-- month 6 row -->
+    <text x="0" y="98" font-size="14" fill="#c3c2b7" font-weight="600">Month 6</text>
+    <g>
+      <rect x="90" y="82" width="104" height="24" rx="3" fill="var(--off)"/>
+      <rect x="196" y="82" width="88" height="24" rx="3" fill="var(--dysk)"/>
+      <rect x="286" y="82" width="66" height="24" rx="3" fill="var(--on)"/>
+      <rect x="354" y="82" width="52" height="24" rx="3" fill="var(--off)"/>
+      <rect x="408" y="82" width="140" height="24" rx="3" fill="var(--on)"/>
+      <rect x="550" y="82" width="76" height="24" rx="3" fill="var(--off)"/>
+      <rect x="628" y="82" width="140" height="24" rx="3" fill="var(--on)"/>
+      <rect x="770" y="82" width="76" height="24" rx="3" fill="var(--off)"/>
+      <rect x="848" y="82" width="64" height="24" rx="3" fill="var(--on)"/>
+      <rect x="914" y="82" width="76" height="24" rx="3" fill="var(--off)"/>
+    </g>
+    <!-- dose ticks -->
+    <g fill="#9085e9">
+      <path d="M171 122 l7 12 l-14 0 Z"/><path d="M399 122 l7 12 l-14 0 Z"/>
+      <path d="M619 122 l7 12 l-14 0 Z"/><path d="M839 122 l7 12 l-14 0 Z"/>
+    </g>
+    <g font-size="12" fill="#898781" text-anchor="middle">
+      <text x="171" y="152">07:30</text><text x="399" y="152">11:30</text>
+      <text x="619" y="152">15:30</text><text x="839" y="152">19:30</text>
+      <text x="90" y="180" text-anchor="start">6:00</text><text x="990" y="180" text-anchor="end">23:00</text>
+    </g>
+  </svg>
+  <div class="legend">
+    <span><i style="background:var(--on)"></i>ON — medication working</span>
+    <span><i style="background:var(--off)"></i>OFF — symptoms back</span>
+    <span><i style="background:var(--dysk)"></i>ON + dyskinesia</span>
+    <span><i style="background:#9085e9;border-radius:50%"></i>dose</span>
+  </div>
+  <p class="lede">Six months later the OFF wedges are wider and dyskinesia caps the dose — <b>the window is narrowing, and no snapshot can see it happening.</b></p>
+</section>
+
+<!-- 4 · SOLUTION -->
+<section class="slide">
+  <div class="kick">Cadence</div>
+  <h1>We <em>automated the validated instrument</em>.</h1>
+  <p class="lede">The ON/OFF diary, made objective and continuous — inferred passively from movement and voice, <b>365 days instead of 3</b>. Footage never leaves the home; only features do.</p>
+  <div class="pipe">
+    <div class="st"><b>Capture</b><span>camera + mic · passive, consent-first</span></div>
+    <div class="arr">→</div>
+    <div class="st"><b>Extract</b><span>MediaPipe pose 33 pts · voice</span></div>
+    <div class="arr">→</div>
+    <div class="st"><b>Features</b><span>tremor · gait · sway · speech</span></div>
+    <div class="arr">→</div>
+    <div class="st"><b>Interpret</b><span>LLM → one clinical flag</span></div>
+    <div class="arr">→</div>
+    <div class="st"><b>Surfaces</b><span>doctor · patient · family</span></div>
+  </div>
+  <p class="quiet">Capture + extract is Daniel's working pipeline (OpenCV, MediaPipe, Gemini voice) — not a mock-up. Trend vs own baseline, not UPDRS scores. Decision support — the clinician always decides.</p>
+</section>
+
+<!-- 5 · LIVE DEMOS -->
+<section class="slide">
+  <div class="kick">Live — everything runs</div>
+  <h1>Watch it <em>measure, interpret, reassure</em>.</h1>
+  <div class="demos">
+    <a class="demo" href="capture.html">
+      <span class="n">DEMO 1</span><b>Capture</b>
+      <span>Real patient footage → tremor, freezing, dyskinesia features live. Voice check-in logs the dose; tremor visibly settles.</span>
+      <span class="go">Open capture →</span>
+    </a>
+    <a class="demo" href="index.html">
+      <span class="n">DEMO 2</span><b>Doctor</b>
+      <span>The diary grid, dose-by-dose response, one titration flag — and pull the appointment forward when the trend demands it.</span>
+      <span class="go">Open dashboard →</span>
+    </a>
+    <a class="demo" href="index.html">
+      <span class="n">DEMO 3</span><b>Patient & family</b>
+      <span>Same data, opposite rendering: one state, one action, no scary charts. Reassurance, not surveillance.</span>
+      <span class="go">Toggle in dashboard →</span>
+    </a>
+  </div>
+</section>
+
+<!-- 6 · FUTURE -->
+<section class="slide">
+  <div class="kick">Where this goes</div>
+  <div class="robot">
+    <div class="bod">🤖</div>
+    <div>
+      <h1>The sensor learns to <em>walk</em>.</h1>
+      <p class="lede">Home robots are shipping — <b>1X Neo</b> (1x.tech/neo). Same pipeline, plus hands: it brings the 15:30 dose, steadies a transfer, calls for help when it can <i>see</i> help is needed.</p>
+      <p class="quiet" style="margin-top:1vh">Nearer term: smart pillbox + mirror · multilingual voice · training data across ethnicities.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · CLOSE -->
+<section class="slide">
+  <div class="kick">Cadence</div>
+  <h1>A 90-minute drug should not be tuned on a <em>six-month-old memory</em>.</h1>
+  <p class="lede">20 years of disease, 5–7 hours with a doctor. <b>We make the other 175,000 hours count.</b> Thank you.</p>
+</section>
+
+<div class="foot"><span>Cadence · closing the snapshot gap</span><span><kbd>←</kbd> <kbd>→</kbd> · <span id="pg">1 / 7</span></span></div>
+
+<script>
+const S=[...document.querySelectorAll('.slide')]; let i=0;
+function go(n){S[i].classList.remove('on');i=(n+S.length)%S.length;S[i].classList.add('on');
+  document.getElementById('pg').textContent=(i+1)+' / '+S.length;}
+addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(i+1);if(e.key==='ArrowLeft')go(i-1);});
+addEventListener('click',e=>{if(e.target.closest('a'))return;go(i+(e.clientX>innerWidth/2?1:-1));});
+</script>
+</body>
+</html>
