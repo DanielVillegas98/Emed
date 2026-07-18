@@ -1,0 +1,216 @@
+<!-- NeuroEdge — Data Layer architecture. Self-contained, print/slide friendly. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NeuroEdge — The Data Layer</title>
+<style>
+  :root{
+    --bg:#F5F7FA; --ink:#16202E; --muted:#5A6B7B; --line:#DCE3EB; --surface:#FFFFFF;
+    --voice:#7C5CFC; --vision:#1FA2A6; --cardiac:#E5484D; --sleep:#3B6FE0;
+    --dose:#E08A1E; --out:#1E9E5A; --priv:#E5484D;
+    --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.45;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:40px 28px 72px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+  h1{font-size:30px;font-weight:750;margin:6px 0 6px;letter-spacing:-.01em}
+  .thesis{font-size:15px;color:var(--muted);max-width:760px;margin:0 0 26px}
+  .thesis b{color:var(--ink);font-weight:650}
+
+  /* legend */
+  .legend{display:flex;flex-wrap:wrap;gap:10px 18px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:30px}
+  .lg{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink)}
+  .lg .glyph{width:34px;height:16px;flex:none}
+  .lg .nm{font-weight:600}
+  .lg .fld{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+
+  /* layer band */
+  .band{margin:0 0 8px}
+  .band-head{display:flex;align-items:baseline;gap:12px;margin:26px 0 12px}
+  .band-num{font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:600}
+  .band-title{font-size:15px;font-weight:700}
+  .band-sub{font-size:12.5px;color:var(--muted)}
+  .grid{display:grid;gap:12px}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .g5{grid-template-columns:repeat(5,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:860px){.g4,.g5,.g3{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:520px){.g4,.g5,.g3{grid-template-columns:1fr}}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px 14px;position:relative;overflow:hidden}
+  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent,var(--muted))}
+  .card h3{margin:0 0 4px;font-size:13.5px;font-weight:680;padding-left:2px}
+  .card p{margin:0;font-size:11.5px;color:var(--muted)}
+  .card .tag{display:inline-block;margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--ink);background:#EEF2F7;border:1px solid var(--line);border-radius:5px;padding:2px 6px}
+  .card .method{margin-top:7px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+  .tier{grid-column:1/-1;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:6px 0 -4px}
+
+  /* flow connector */
+  .flow{display:flex;justify-content:center;margin:14px 0}
+  .flow svg{opacity:.5}
+
+  /* privacy boundary */
+  .priv{display:flex;align-items:center;gap:12px;margin:22px 0;padding:11px 16px;border:1.5px dashed var(--priv);border-radius:10px;background:rgba(229,72,77,.05)}
+  .priv .lock{font-size:16px}
+  .priv b{color:var(--priv)}
+  .priv span{font-size:12px;color:var(--ink)}
+
+  /* knowledge graph panel */
+  .kg{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px 8px 4px;margin-top:4px}
+  .kg svg{width:100%;height:auto;display:block}
+
+  /* stack table */
+  .stack{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:12.5px;margin-top:12px}
+  .stack th,.stack td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  .stack th{background:#EEF2F7;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .stack td:first-child{font-weight:650;width:26%}
+  .stack td .m{font-family:var(--mono);font-size:11px;color:var(--ink)}
+  .stack tr:last-child td{border-bottom:none}
+
+  .foot{margin-top:26px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+  .foot b{color:var(--ink)}
+
+  @media print{body{background:#fff}.wrap{padding:0}.card,.kg,.stack,.legend{break-inside:avoid}}
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">NeuroEdge · Cadence</div>
+  <h1>The Data Layer</h1>
+  <p class="thesis">Every signal below is captured <b>passively</b>, reduced to <b>numbers on the device</b>, and tracked against the patient's own baseline. Raw video and audio never leave the home — only de-identified time-series cross the wire. A knowledge-graph layer links those series to clinical concepts to produce an <b>explainable decision suggestion</b>, not a diagnosis.</p>
+
+  <!-- LEGEND / MODALITY SIGNAL GLYPHS -->
+  <div class="legend">
+    <div class="lg"><svg class="glyph" viewBox="0 0 34 16"><polyline points="0,8 4,8 6,3 8,13 10,5 12,11 14,8 18,8 20,4 22,12 24,6 26,10 28,8 34,8" fill="none" stroke="#7C5CFC" stroke-width="1.6"/></svg><span class="nm" style="color:#7C5CFC">Voice</span> <span class="fld">acoustic</span></div>
+    <div class="lg"><svg class="glyph" viewBox="0 0 34 16"><circle cx="5" cy="12" r="2" fill="#1FA2A6"/><circle cx="15" cy="6" r="2" fill="#1FA2A6"/><circle cx="25" cy="12" r="2" fill="#1FA2A6"/><path d="M5 12 L15 6 L25 12" fill="none" stroke="#1FA2A6" stroke-width="1.2" stroke-dasharray="2 2"/></svg><span class="nm" style="color:#1FA2A6">Vision</span> <span class="fld">gait · pose</span></div>
+    <div class="lg"><svg class="glyph" viewBox="0 0 34 16"><polyline points="0,8 8,8 10,8 12,2 14,14 16,8 22,8 24,8 26,4 28,10 30,8 34,8" fill="none" stroke="#E5484D" stroke-width="1.6"/></svg><span class="nm" style="color:#E5484D">Cardiac</span> <span class="fld">HR · HRV</span></div>
+    <div class="lg"><svg class="glyph" viewBox="0 0 34 16"><path d="M0 4 H10 V8 H20 V12 H34" fill="none" stroke="#3B6FE0" stroke-width="1.6"/></svg><span class="nm" style="color:#3B6FE0">Sleep</span> <span class="fld">stages</span></div>
+    <div class="lg"><svg class="glyph" viewBox="0 0 34 16"><rect x="2" y="4" width="8" height="8" rx="1.5" fill="none" stroke="#E08A1E" stroke-width="1.6"/><path d="M14 8 h16 M26 5 l4 3 -4 3" fill="none" stroke="#E08A1E" stroke-width="1.6"/></svg><span class="nm" style="color:#E08A1E">Adherence</span> <span class="fld">dose events</span></div>
+  </div>
+
+  <!-- LAYER 1 — CAPTURE -->
+  <div class="band">
+    <div class="band-head"><span class="band-num">01</span><span class="band-title">Capture</span><span class="band-sub">passive sensors · zero patient effort</span></div>
+    <div class="grid g5">
+      <div class="card" style="--accent:var(--vision)"><h3>Camera (RGB)</h3><p>Skeletal keypoints extracted in RAM. No frames stored or sent.</p><span class="tag">MediaPipe / MoveNet</span></div>
+      <div class="card" style="--accent:var(--voice)"><h3>Microphone</h3><p>Speech during natural interactions, then discarded.</p><span class="tag">on-device VAD</span></div>
+      <div class="card" style="--accent:var(--dose)"><h3>BLE Pill Box</h3><p>Lid-open event: compartment ID + timestamp. Display is the BLE hub.</p><span class="tag">BLE GATT</span></div>
+      <div class="card" style="--accent:var(--cardiac)"><h3>Camera → rPPG</h3><p>Facial micro-colour change → pulse. <b>Trend-grade, not a vitals monitor.</b></p><span class="tag">POS / CHROM</span></div>
+      <div class="card" style="--accent:var(--sleep)"><h3>Radar / Wearable</h3><p>Contactless sleep sensing (e.g. Nest Hub radar) or optional band.</p><span class="tag">optional tier</span></div>
+    </div>
+  </div>
+
+  <div class="flow"><svg width="24" height="26"><path d="M12 0 V20 M6 14 l6 6 6-6" fill="none" stroke="#5A6B7B" stroke-width="1.5"/></svg></div>
+
+  <!-- LAYER 2 — ON-DEVICE EXTRACTION -->
+  <div class="band">
+    <div class="band-head"><span class="band-num">02</span><span class="band-title">On-device feature extraction</span><span class="band-sub">Edge AI · all inference local</span></div>
+    <div class="grid g5">
+      <div class="card" style="--accent:var(--vision)"><h3>Gait &amp; Pose</h3><p>Cadence, stride, shuffle index, sit-to-stand time, tremor, freezing.</p><span class="method">17-pt skeleton kinematics</span></div>
+      <div class="card" style="--accent:var(--voice)"><h3>Voice Biomarkers</h3><p>Volume (hypophonia), jitter, shimmer, HNR, articulation rate, pauses.</p><span class="method">openSMILE / Praat (parselmouth)</span></div>
+      <div class="card" style="--accent:var(--cardiac)"><h3>Cardiac Features</h3><p>Resting HR, HRV (SDNN/RMSSD) — autonomic signal, PD-relevant.</p><span class="method">rPPG signal → HRV metrics</span></div>
+      <div class="card" style="--accent:var(--sleep)"><h3>Sleep Features</h3><p>Duration, fragmentation, restlessness, REM-behaviour flags.</p><span class="method">radar / actigraphy staging</span></div>
+      <div class="card" style="--accent:var(--dose)"><h3>Adherence Fusion</h3><p>3-signal check: BLE lid + hand-to-mouth gesture + verbal confirm.</p><span class="method">rule-based sensor fusion</span></div>
+    </div>
+  </div>
+
+  <div class="flow"><svg width="24" height="26"><path d="M12 0 V20 M6 14 l6 6 6-6" fill="none" stroke="#5A6B7B" stroke-width="1.5"/></svg></div>
+
+  <!-- LAYER 3 — DATASETS -->
+  <div class="band">
+    <div class="band-head"><span class="band-num">03</span><span class="band-title">Longitudinal datasets</span><span class="band-sub">text-only time-series · tracked vs personal 30-day baseline</span></div>
+    <div class="grid g5">
+      <div class="card" style="--accent:var(--vision)"><h3>Gait Trend</h3><p>Daily aggregates + rolling baseline: speed, shuffle, balance.</p></div>
+      <div class="card" style="--accent:var(--voice)"><h3>Voice Trend</h3><p>Daily biomarker series vs baseline; % change flags.</p></div>
+      <div class="card" style="--accent:var(--cardiac)"><h3>Cardiac Trend</h3><p>Resting HR / HRV drift — dysautonomia watch.</p></div>
+      <div class="card" style="--accent:var(--sleep)"><h3>Sleep Trend</h3><p>Nightly quality + fragmentation series.</p></div>
+      <div class="card" style="--accent:var(--dose)"><h3>Dose Timing Log</h3><p>Prescribed vs actual time per dose; misses; confidence.</p></div>
+    </div>
+    <p class="band-sub" style="margin-top:10px">Each series is emitted as a <span style="font-family:var(--mono)">FHIR Observation</span> so it slots straight into an EHR — plus a <b>Fall &amp; Triage Event</b> log and an <b>Activity-Rhythm</b> deviation series feeding the same timeline.</p>
+  </div>
+
+  <!-- PRIVACY BOUNDARY -->
+  <div class="priv"><span class="lock">🔒</span><span><b>Privacy boundary.</b> Raw video &amp; audio never leave the device. Only de-identified numeric telemetry crosses into the cloud — which is why cloud analysis and LLM summarisation are safe here.</span></div>
+
+  <!-- LAYER 4 — KNOWLEDGE GRAPH / FUSION -->
+  <div class="band">
+    <div class="band-head"><span class="band-num">04</span><span class="band-title">Temporal fusion &amp; knowledge graph</span><span class="band-sub">where separate signals become one clinical picture</span></div>
+    <div class="kg">
+      <svg viewBox="0 0 900 340" xmlns="http://www.w3.org/2000/svg" font-family="ui-sans-serif,system-ui,sans-serif">
+        <defs>
+          <marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#B23B3F"/></marker>
+        </defs>
+        <!-- correlation edges (drawn first, behind nodes) -->
+        <g stroke="#E08A1E" stroke-width="1.4" stroke-dasharray="5 3" fill="none" opacity="0.85" marker-start="url(#a)" marker-end="url(#a)" stroke-linecap="round">
+          <path d="M175,90 C 300,60 420,60 545,92"/>            <!-- dose <-> gait -->
+          <path d="M165,120 C 240,200 300,235 415,250"/>        <!-- dose <-> voice -->
+          <path d="M600,110 C 640,170 660,210 610,250"/>        <!-- gait <-> falls -->
+          <path d="M470,255 C 540,275 590,270 600,258"/>        <!-- voice <-> falls (via) -->
+          <path d="M720,120 C 760,175 760,205 700,120"/>        <!-- HRV internal -->
+        </g>
+        <g stroke="#C7CFD9" stroke-width="1.2" stroke-dasharray="3 3" fill="none">
+          <path d="M720,105 C 640,140 560,150 470,235"/>        <!-- HRV ~ voice -->
+          <path d="M255,300 C 400,315 560,305 660,285"/>        <!-- sleep ~ falls -->
+        </g>
+
+        <!-- biomarker nodes -->
+        <g font-size="12" font-weight="650" text-anchor="middle">
+          <g><circle cx="130" cy="95" r="34" fill="#FDF1DF" stroke="#E08A1E" stroke-width="2"/><text x="130" y="92" fill="#8A5410">Dose</text><text x="130" y="106" fill="#8A5410">timing</text></g>
+          <g><circle cx="580" cy="95" r="34" fill="#E4F5F5" stroke="#1FA2A6" stroke-width="2"/><text x="580" y="92" fill="#0E6A6D">Gait</text><text x="580" y="106" fill="#0E6A6D">decline</text></g>
+          <g><circle cx="435" cy="255" r="34" fill="#F0EBFE" stroke="#7C5CFC" stroke-width="2"/><text x="435" y="252" fill="#4B32B0">Voice</text><text x="435" y="266" fill="#4B32B0">decline</text></g>
+          <g><circle cx="635" cy="270" r="30" fill="#FBE7E8" stroke="#E5484D" stroke-width="2"/><text x="635" y="267" fill="#9E2D30">Fall</text><text x="635" y="281" fill="#9E2D30">events</text></g>
+          <g><circle cx="735" cy="95" r="30" fill="#FBE7E8" stroke="#E5484D" stroke-width="2"/><text x="735" y="92" fill="#9E2D30">HR /</text><text x="735" y="106" fill="#9E2D30">HRV</text></g>
+          <g><circle cx="215" cy="290" r="30" fill="#E7EEFC" stroke="#3B6FE0" stroke-width="2"/><text x="215" y="287" fill="#274FA0">Sleep</text><text x="215" y="301" fill="#274FA0">quality</text></g>
+        </g>
+
+        <!-- edge labels -->
+        <g font-size="10" fill="#B27214" text-anchor="middle">
+          <text x="360" y="58">late dose ↔ &quot;off&quot; gait</text>
+          <text x="250" y="205">delay ↔ hypophonia</text>
+        </g>
+        <text x="672" y="188" font-size="10" fill="#9E2D30" text-anchor="middle">gait ↔ falls</text>
+
+        <!-- ontology anchor -->
+        <g>
+          <rect x="330" y="20" width="240" height="26" rx="6" fill="#EEF2F7" stroke="#C7CFD9"/>
+          <text x="450" y="37" font-size="10.5" text-anchor="middle" fill="#5A6B7B" font-family="ui-monospace,monospace">clinical ontology · SNOMED CT · UPDRS concepts</text>
+        </g>
+        <line x1="130" y1="61" x2="400" y2="46" stroke="#C7CFD9" stroke-width="1" stroke-dasharray="2 2"/>
+        <line x1="580" y1="61" x2="500" y2="46" stroke="#C7CFD9" stroke-width="1" stroke-dasharray="2 2"/>
+      </svg>
+    </div>
+    <p class="band-sub" style="margin-top:10px"><b>Method:</b> align all streams on one timeline → model a personal baseline → detect sustained change with <span style="font-family:var(--mono)">CUSUM / change-point</span> → measure <span style="font-family:var(--mono)">lagged cross-correlation</span> between dose timing and each symptom → walk the graph from a flagged change to its linked clinical concept and guideline → hand the linked evidence to an LLM for a plain-language summary.</p>
+  </div>
+
+  <div class="flow"><svg width="24" height="26"><path d="M12 0 V20 M6 14 l6 6 6-6" fill="none" stroke="#5A6B7B" stroke-width="1.5"/></svg></div>
+
+  <!-- LAYER 5 — OUTPUTS -->
+  <div class="band">
+    <div class="band-head"><span class="band-num">05</span><span class="band-title">Routed outputs</span><span class="band-sub">wellbeing to family · pathology to clinician</span></div>
+    <div class="grid g3">
+      <div class="card" style="--accent:var(--out)"><h3>Family — peace of mind</h3><p>"Arthur's day looks normal." Adherence calendar + alert history with triage transcript. No clinical metrics.</p></div>
+      <div class="card" style="--accent:var(--out)"><h3>Clinician — 1-page report + exception alert</h3><p>Gait &amp; voice trends plotted against dose timing. Alert fires only on sustained threshold crossings, into the existing EHR queue.</p></div>
+      <div class="card" style="--accent:var(--out)"><h3>Decision support</h3><p><b>"Flag for Review"</b> with the graph's reasoning attached. The clinician decides — the system never auto-prescribes or diagnoses.</p></div>
+    </div>
+  </div>
+
+  <!-- TECH STACK -->
+  <div class="band">
+    <div class="band-head"><span class="band-num">06</span><span class="band-title">Tech stack, layer by layer</span></div>
+    <table class="stack">
+      <tr><th>Layer</th><th>What it does</th><th>Buildable with</th></tr>
+      <tr><td>Edge inference</td><td>Pose, voice features, rPPG, fall detection on the device</td><td><span class="m">MediaPipe · MoveNet · TensorFlow Lite / ONNX Runtime · openSMILE / parselmouth · POS/CHROM rPPG</span></td></tr>
+      <tr><td>Transport</td><td>De-identified numeric telemetry only</td><td><span class="m">MQTT or HTTPS · JSON / FHIR Observation</span></td></tr>
+      <tr><td>Time-series store</td><td>The raw biomarker series — the workhorse</td><td><span class="m">TimescaleDB (Postgres) or InfluxDB</span></td></tr>
+      <tr><td>Knowledge graph</td><td>Relationships + clinical ontology for reasoning</td><td><span class="m">Neo4j or TerminusDB · SNOMED CT concepts</span></td></tr>
+      <tr><td>Fusion / analysis</td><td>Baseline, change-point, cross-correlation</td><td><span class="m">Python · pandas · numpy · scipy · ruptures (CUSUM)</span></td></tr>
+      <tr><td>Summarisation</td><td>Metrics → plain-language report</td><td><span class="m">LLM API over de-identified text</span></td></tr>
+      <tr><td>Interop / billing</td><td>EHR attach + RPM evidence</td><td><span class="m">FHIR · CPT 99454 / 99457 logs</span></td></tr>
+    </table>
+  </div>
+
+  <div class="foot">
+    <p><b>Two stores, on purpose.</b> Time-series DB holds the signals; the graph DB holds the <i>relationships</i> and clinical concepts that make a suggestion explainable. If you meant TerminusDB by "Turing DB," it fits the graph slot (its version-control is a bonus for auditability); confirm the product name before it goes on a slide.</p>
+    <p style="margin-top:8px"><b>Honest caveats to state before a judge does.</b> rPPG heart rate is trend-grade, motion/light-sensitive, and has documented accuracy bias across skin tones — a signal, not a vitals monitor. Ambient sleep staging needs radar or a wearable. Everything here produces <i>trend signals feeding clinician decision support</i>, not diagnostic-grade measurements.</p>
+  </div>
+</div>
