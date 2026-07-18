@@ -1,4 +1,4 @@
-# NeuroEdge: Ambient Care for Parkinson's Disease #emed
+# ParkinsonEdge: Ambient Care for Parkinson's Disease #emed
 
 ## The Problem
 Parkinson's care has a 6-month clinical blind spot. Neurologists rely on infrequent clinic visits to adjust critical medications, while patients face daily risks of falls, freezing of gait, and voice degradation at home without continuous monitoring.
